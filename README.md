@@ -19,6 +19,9 @@ Haiweng Xu · Hao Luo · Chuan Mao · Zongqing Lu
 Official repository for **TactoHand**, which predicts dense contact, proximity
 and 3D force fields on the hand surface from monocular video.
 
+[Being-H0.8](https://research.beingbeyond.com/being-h08) uses TactoHand to generate
+contact and proximity labels from human video for tactile pretraining.
+
 ## Release Plan
 
 - [ ] Release the project website.
