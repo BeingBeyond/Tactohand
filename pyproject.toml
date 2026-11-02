@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tactohand-preview"
+version = "0.0.1.dev0"
+description = "Early source preview of TactoHand force aggregation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["torch>=2.0"]
+
+[tool.setuptools.packages.find]
+include = ["tactohand_preview*"]
