@@ -16,14 +16,12 @@ Haiweng Xu · Hao Luo · Chuan Mao · Zongqing Lu
 
 </div>
 
-TactoHand predicts dense **contact, proximity and 3D force fields** at the 778
-vertices of each MANO hand from monocular video. A visual backbone and temporal
-transformer aggregate frame features, and task queries decode the three fields.
-Training uses geometry-derived contact/proximity labels and motion-derived
-force labels, with differentiable physics supervision on eligible sequences.
-
-This repository provides the model, training and evaluation code, and readers
-for the prepared datasets used by the project.
+TactoHand predicts **contact, proximity, and 3D force** at each of the 778 MANO
+vertices per hand from monocular RGB video. A visual backbone encodes individual
+frames, a temporal transformer combines their features, and task queries decode
+the three fields. Training uses geometry-derived contact and proximity labels,
+motion-derived force labels, and differentiable physics supervision on eligible
+sequences.
 
 [Being-H0.8](https://research.beingbeyond.com/being-h08) uses TactoHand to generate contact and proximity labels from human video for tactile pretraining.
 
@@ -53,7 +51,7 @@ python -m pip install -e '.[train,video]'
 Geometry-dependent workflows additionally require the `manotorch` backend and
 MANO model files. Set `MANO_ASSETS_ROOT` to a directory containing
 `models/MANO_LEFT.pkl` and `models/MANO_RIGHT.pkl`; see the
-[asset guide](assets/README.md) and [installation details](docs/usage.md#installation).
+[installation guide](docs/usage.md#installation).
 RGB-only inference does not need the datasets or MANO geometry.
 
 ### Models and data
@@ -95,7 +93,7 @@ to the configured output directories. To initialize from task weights while
 resetting optimizer and scheduler state, pass
 `resume_from=/path/to/model.ckpt resume_weights_only=true`.
 Reproducing an existing campaign also requires its saved settings and initialization.
-See the [training documentation](training/README.md) for data and runtime details.
+See the [training guide](docs/usage.md#training) for data and runtime details.
 
 ## Inference on your video
 
@@ -108,12 +106,12 @@ tactohand-infer --config model.yaml --ckpt model.ckpt \
   --output prediction_outputs/clip/predictions.npz
 ```
 
-The command samples at the configured rate (10 Hz for TactoHand-256),
-letterboxes frames to the configured image size and predicts one clip. At 10 Hz,
-32 samples span timestamps 0–3.1 seconds; the video must contain all requested
-frames. Use `--start-seconds` to select another window, or replace the clip
-options with `--full-video` to process the entire video with overlapping
-windows. CPU execution is available with `--device cpu`.
+The command samples the video at the model's input rate and letterboxes each
+frame to the configured input size. In this example, 32 samples at 10 Hz span
+0–3.1 seconds. The video must cover the requested interval. Set
+`--start-seconds` to select another interval, or use `--full-video` in place of
+the clip options to process overlapping windows across the full video. Use
+`--device cpu` for CPU inference.
 
 Outputs share the requested filename stem:
 
@@ -127,14 +125,13 @@ Outputs share the requested filename stem:
 | `.json` | Field shapes, units, configuration and decoding metadata |
 | `.done` | Successful completion marker |
 
-Hand order is left, right. Select a new output stem for each prediction; existing
-outputs are not overwritten. Tensor input is also supported through `--input`.
+The hand axis lists the left hand first and the right hand second. Use a new
+output stem for each run. To pass a tensor instead of a video, use `--input`.
 
-**Physical forces:** RGB inference supplies normalized force vectors. To obtain
-camera-frame forces in newtons, pass `--geometry geometry.npz` containing the
-training normalization scale and, for the current local-frame force heads,
-time-aligned per-vertex axes. The CLI does not estimate hand geometry or camera
-parameters from the video. See the [input and force-decoding contract](docs/usage.md#prediction).
+RGB inference returns normalized force vectors. To recover camera-frame forces
+in newtons, provide the training normalization scale and, for local-frame
+force heads, time-aligned per-vertex axes in `--geometry geometry.npz`.
+See [input and force decoding](docs/usage.md#prediction).
 
 ## Evaluation
 
@@ -174,24 +171,23 @@ The paper uses separate SF/T variants for MOW proximity
 and contact; one current temporal checkpoint does not reproduce both columns.
 
 For the force/physics experiment on DexYCB, select `--metrics force rollout`.
-Force scores use valid image-aligned references; rollout `h4` covers 0.4 seconds
-and uses observed initialization plus reference forces between predicted force
-samples. It is a **reference-assisted evaluation**, not an RGB-only free rollout.
-Inspect valid counts and divergence rates alongside errors. The available metric
-keys and units are listed by `tactohand-eval --list-metrics`.
+Force metrics use valid reference samples aligned with the input images. The
+0.4-second rollout (`h4`) starts from the observed state and uses reference
+forces between predicted force samples. Read the errors alongside valid counts
+and divergence rates. Run `tactohand-eval --list-metrics` for metric names and
+units.
 
-Evaluation currently reads normalization statistics from the original training
-mixture, even when evaluating one dataset. Preserve those metadata; changing
-`data.datasets` to the test dataset would change the force scale. See
+Force decoding uses the training mixture's normalization statistics. Select the
+evaluation dataset with `--datasets` and keep `data.datasets` in the saved
+configuration so the training force scale is preserved. See
 [evaluation details](docs/usage.md#prediction) and the paper's evaluation appendix.
 
 ## Visualization
 
 ### Dataset visualization
 
-The dataset reviewer is intended to display RGB, hand/object geometry, contact,
-proximity and force labels, with HTML galleries and rendered media. It consumes
-real training windows through the shared data/geometry readers.
+The dataset reviewer displays RGB frames, hand and object meshes, and contact,
+proximity, and force labels when it can read the dataset layout.
 
 The current `scripts/visualization/visualize_training_batches.py` still reaches
 a legacy `meta/observations.parquet` read and fails on the installed manifest-based
@@ -199,7 +195,7 @@ dataset layout. Its dataset index integration needs updating before it can serve
 as the public dataset viewer. See [visualization status](docs/usage.md#visualization)
 for the existing entry points and the remaining work.
 
-### Inference-result visualization
+### Prediction viewer
 
 Start the viewer from the repository root and open the address printed in the
 terminal.
@@ -227,7 +223,6 @@ inspect normalized directions on the rest-pose mesh alongside any surface field.
 The viewer reads the source clip from the JSON's `input` path. For HEVC or
 another unsupported codec, make a browser-compatible copy and set
 `preview_video` in that JSON. Relative video paths are resolved from the run directory.
-The meshes show the fields in MANO vertex order alongside the source video.
 
 `--visualize N` on the evaluation command compares predictions with dataset
 reference labels. It requires dataset geometry and shares the dataset viewer's
@@ -263,17 +258,15 @@ contact = labels["contact"].reshape(-1, 2, 778)
 distance_m = labels["signed_distance"].reshape(-1, 2, 778)
 ```
 
-These are label rows, not necessarily video frames. Respect `source_position`,
-token mappings, hand-presence bits and supervision-validity flags when joining
-modalities. Signed reference distances and decoded predicted proximity are
-related by the training target definition; they should not be compared blindly.
-Contact-only datasets do not provide valid force supervision.
+Use `source_position` and the declared frame mappings to align label rows with
+video. Apply the hand-presence and supervision-validity flags before computing
+metrics. Compare predicted proximity with the target defined from the signed
+reference distance. Contact-only datasets do not provide valid force targets.
 
 For RGB/geometry access, use `core.data.processed_index.ProcessedIndex` and the
 shared readers. For model inputs, use `training.data` so sampling, handcrop
 intrinsics and force-supervision gates match training.
-See the [label schema](docs/labels_v5.md), [dataset-specific conventions](docs/datasets.md)
-and [data-module documentation](training/README.md).
+See the [label schema](docs/labels_v5.md) and [dataset conventions](docs/datasets.md).
 
 ## Code organization
 
@@ -285,7 +278,7 @@ and [data-module documentation](training/README.md).
 | `scripts/` | Training, evaluation, data review and other operational entry points |
 | `tools/` | Developer checks, packaging and workspace maintenance |
 
-Additional documentation: [index](docs/README.md) · [installation and CLI details](docs/usage.md).
+[Usage guide](docs/usage.md) · [Datasets](docs/datasets.md) · [Label format](docs/labels_v5.md)
 
 ## Release Plan
 

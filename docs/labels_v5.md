@@ -1,11 +1,10 @@
 # TactoHand 标签存储格式（labels-v5）
 
-正式数据位于 `_processed/data/<dataset>_lerobot`。入口是
-`meta/info.json` 指向的 prepared manifest。manifest 的整数 ranges
-将 episode、stream 和逻辑行映射到 Parquet 文件及物理偏移。
-episode 可以跨文件和 row group。RGB、HMR、相机和 handcrop 保留各自的索引。
+从 `<dataset>_lerobot/meta/info.json` 找到 prepared manifest。
+其中的整数范围将 episode、数据流和逻辑行映射到 Parquet 文件及文件内偏移。
+一个 episode 可以跨多个文件和 row group。RGB、HMR、相机和手部裁剪各有独立索引。
 
-## Tactile family
+## 触觉标签表
 
 | 组件 | 行单位 | 内容 |
 | --- | --- | --- |
@@ -50,6 +49,13 @@ solver 行提供。contact-only 配置同时屏蔽直接力和 rollout。
 
 ## 求解、发布和校验
 
+从仓库根目录运行。求解器的路径、设备和 worker 数由命令行参数设置。
+
+```bash
+python scripts/labels/solve.py --help
+python scripts/labels/publish.py --solver-run <run> --dataset <name> --processed-root <root>
+```
+
 `scripts/labels/solve.py` 输出 canonical solver NPZ。
 `scripts/labels/publish.py` 由原始 solver 有效行构造目标槽位和监督区间。
 多刚体目标优先采用标注对象，缺少对应标注时按该段实际受力物体的 wrench
@@ -71,13 +77,12 @@ native timeline 和 tactile/force 内容摘要。Handcrop 更新另需通过
 
 ## 刚体参考
 
-缺失的逐刚体参考量
-在训练前离线恢复，写入独立 `rigid_reference_v1` 辅助目录。这是带版本和源指纹的辅助标签。每个 dataset/episode 包含 `bodies.parquet` 与原子
-发布的 `manifest.json`。字段为 solver-row 对齐的逐刚体 COM 位置、旋转、
+训练前离线恢复缺失的逐刚体参考量，并写入独立的 `rigid_reference_v1`
+目录。每个数据集的 episode 包含 `bodies.parquet` 和原子发布的
+`manifest.json`，记录参考量版本和源数据指纹。字段为 solver-row 对齐的逐刚体 COM 位置、旋转、
 速度、external/residual wrench、逐帧世界重力、双手 778 顶点 owner（int16，
 -1 表示无归属）和逐刚体有效位。object_ids 顺序与原标签索引一致。
-environment 是从历史动力学参考和已发布力场恢复的残差外力，不是独立
-测量的桌面支撑；不能用该残差作为真实接触力准确性的独立证据。
+`environment` 是由已有动力学参考和发布的力场推算出的残差外力。
 恢复需验证已发布目标状态、速度及合并 wrench。位姿插值区间及其 Gaussian
 核邻域按原生成流程恢复逐刚体 `dynamics_valid`：无观测支撑的刚体为 neutral，
 不产生 hand/environment wrench，不进入该刚体的 rollout；其它有效刚体继续

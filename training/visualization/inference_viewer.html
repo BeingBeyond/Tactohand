@@ -64,7 +64,7 @@ canvas{width:100%;aspect-ratio:1 / 1;display:block;touch-action:none}canvas.orbi
 <form id="prediction-form" class="panel controls prediction-form">
   <div class="bar">
     <label>Checkpoint <select id="checkpoint-select" required disabled></select></label>
-    <label class="file">Choose video<input id="prediction-file" type="file" accept="video/*,.mkv,.mov,.avi" required></label>
+    <label class="file">Input video<input id="prediction-file" type="file" accept="video/*,.mkv,.mov,.avi" required></label>
     <span id="prediction-file-name"></span>
     <button id="predict" type="submit" disabled>Predict</button>
   </div>
@@ -81,7 +81,7 @@ canvas{width:100%;aspect-ratio:1 / 1;display:block;touch-action:none}canvas.orbi
 </div>
 <div id="layout" class="layout" hidden>
 <section id="source-panel" class="panel" aria-label="Source video">
-  <div class="bar"><h2>Source video</h2><label class="file">Open video<input id="video-file" type="file" accept="video/*"></label></div>
+  <div class="bar"><h2>Source video</h2><label class="file">Select playback video<input id="video-file" type="file" accept="video/*"></label></div>
   <video id="video" controls playsinline preload="metadata"></video>
   <p class="note" id="video-status" role="status"></p>
 </section>

@@ -12,9 +12,8 @@
 <a id="installation"></a>
 
 ## 安装与资源
-当前提供包配置和 wheel 安装入口，服务当前 TactoHand 网络、训练和评测代码。
-尚未完成全新依赖环境的真实数据训练验收；本页不将所有旧任务或 baseline 视为已支持。
-资源一致性检查使用直接内容比较。
+按工作流安装所需依赖。下列命令覆盖 TactoHand 的网络、推理、训练和评测。
+分发检查在已有依赖的环境中完成，覆盖合成输入和命令行入口。
 
 ### 安装分组
 
@@ -38,8 +37,8 @@ python -m pip install -e '.[train,video]'
 python -m pip install -e '.[train,visualization,labels]'
 ```
 
-`video` 额外组对应当前验证环境中的 TorchCodec 0.10 系列，需与 Torch/CUDA/FFmpeg
-匹配；未安装时可显式选择 `data.video_backend=cv2`，其结果/性能未在本轮重新对账。
+`video` 依赖组安装 TorchCodec 0.10 系列，需与 PyTorch、CUDA 和 FFmpeg
+匹配。也可以用 `data.video_backend=cv2` 选择 OpenCV 解码。
 `labels` 仅提供数据与网格处理基础库，不声称安装完整 Newton/Warp 求解环境。
 MANO、Newton/Warp 和外部 baseline 的来源及完整安装仍待补充；
 这些额外工作流不会因安装基础网络而被自动克隆。
@@ -76,7 +75,11 @@ MANO、Newton/Warp 和外部 baseline 的来源及完整安装仍待补充；
 HACO 336/84 回归器或 contact_data_all.npy。旧 reduced-mesh loss 仍要求与其表示
 匹配的外部回归器，并保持原计算。旧任务配置没有批量改写。
 
-只查看组合配置，不读取数据或下载权重：
+<a id="training"></a>
+
+### 训练
+
+查看组合配置：
 
 ```bash
 tactohand-train --cfg job experiment=tactohand data=tactohand
@@ -95,10 +98,20 @@ tactohand-train experiment=tactohand data=tactohand \
   data.batch_size=1 data.num_workers=0 training.devices=1
 ```
 
-历史 A800/4090 集群配方已归入 `scripts/training/recipes/`，仍保留其平台默认值；
-此处的标准 Python/已安装命令入口不依赖这些默认值。
 独立推理与 `--config` 评测用法、输出单位和边界见
 [独立推理与评测说明](usage.md#prediction)。
+
+### MANO 模型和训练资源
+
+按参数的生成基底选择 stock 或 corrected MANO。Corrected 左手模型已修正
+`shapedirs` 的 x 分量，右手与 stock 模型共用。模型文件需单独获取。
+[资产清单](../assets/manifest.json)记录路径、指纹和来源。运行
+`python tools/checks/check_assets.py` 可核对本地文件。
+
+接触与力的聚合统计及 GigaHands 物体筛选清单保存在
+`core/resources/tactohand/`。[资源清单](../core/resources/tactohand/manifest.json)
+记录文件来源和统计口径。切换训练数据或复现历史 checkpoint 时，应保留对应的
+统计文件与力尺度。
 
 ### 当前环境与验证范围
 
@@ -115,11 +128,8 @@ tactohand-train experiment=tactohand data=tactohand \
 | TorchCodec | 0.10.0+cu126 |
 | TensorBoard | 2.20.0 |
 
-本轮在现有依赖环境中构建 wheel 并安装到独立临时目录，从仓库外验证包文件、
-配置读取和 CPU 网络路径；未新建一套完全隔离的依赖环境，未运行真实数据训练。
-完整标签生成、外部 baseline、GPU 训练/评测和正式公开代码分发仍需后续验收。
-2026-11-04 的真实 checkpoint CPU 推理及单 batch 评测补充验证见下方资源记录；
-它不代表全量精度复现或全新环境验收。
+下列检查复用了已有依赖，在仓库外安装 wheel 并验证配置和 CPU 推理。
+真实数据训练和论文复现需要配套权重与数据。
 
 已通过：
 
@@ -371,7 +381,7 @@ CPU 检查使用随机 tiny 模型与合成 RGB/局部轴/标签，验证 checkp
 | 当前 Hydra 配置 | 分发白名单中列出的 TactoHand 实验和共享根配置/schema |
 | 共享 `core` 库、labels-v5、可视化 | 保留；不复制另一套实现 |
 | `core/physics/` | 共享物理实现随包安装，统一通过 `core.physics` 导入 |
-| 小型统计量、allowlist 和归一化记录 | 保留 `core/resources/tactohand/` |
+| 接触和力统计、GigaHands 物体筛选清单 | 保留 `core/resources/tactohand/` |
 | 评测渲染依赖的 review helpers | 仅保留评估使用的共享渲染模块及 package markers |
 | 通用 launcher、用户文档 | 源码保留 `scripts/training/run_experiment.sh` 与选定文档 |
 
@@ -417,13 +427,10 @@ python tools/checks/check_distribution.py \
 ```
 
 检查从白名单源码 ZIP 解压出的目录构建 wheel 和 sdist，再从 sdist 重建 wheel，
-逐文件核对库内容一致。临时安装后，在无工作区路径的进程中验证三个命令入口、
+逐文件核对库内容一致。临时安装后，在无工作区路径的进程中验证命令行入口、
 配置与资源读取、随机 tiny 网络 checkpoint 加载，以及 tensor 推理输出。
 同时检查源码包中的文档链接与通用 launcher 配置导出，不启动训练。
 报告逐步落盘，全部成功后写同名 `.done`；失败详情保留在独立日志目录。
 
 该检查复用当前解释器的第三方依赖，不安装依赖、不联网获取权重，不等同于全新
-依赖环境安装或真实 checkpoint/数据验收。完整发布前仍需分别完成这些检查。
-
-这定义的是安装/源码候选包范围。将整个 Git 仓库公开仍会暴露其分支与历史，
-不能用“包内未包含”替代仓库公开前的审阅。来源/许可、正式权重分发和最终发布仍待完成。
+依赖环境安装或真实 checkpoint、数据验收。
