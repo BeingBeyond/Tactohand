@@ -1,150 +1,165 @@
-# TactoHand 标签存储格式（labels-v5）
+# TactoHand label format (labels-v5)
 
-从 `<dataset>_lerobot/meta/info.json` 找到 prepared manifest。
-其中的整数范围将 episode、数据流和逻辑行映射到 Parquet 文件及文件内偏移。
-一个 episode 可以跨多个文件和 row group。RGB、HMR、相机和手部裁剪各有独立索引。
+Open the prepared manifest referenced by `<dataset>_lerobot/meta/info.json`.
+Its integer ranges map episodes, streams, and logical rows to Parquet files
+and file offsets. An episode can span several files and row groups. RGB,
+HMR, camera, and handcrop streams have separate indices.
 
-## 触觉标签表
+## Tactile tables
 
-| 组件 | 行单位 | 内容 |
-| --- | --- | --- |
-| `samples` | solver 行 | `contact`、`signed_distance` |
-| `transitions` | solver 状态行 | 逐顶点世界系力、contact/environment wrench、目标物体的 COM 位姿与速度 |
-| `timeline` | solver 行 | `solver_row`、`solver_time_s`、`source_position`、`tactile_flags`、`force_valid`、`target_object`、`closing_solver_row` |
+| Table | Row unit | Contents |
+|---|---|---|
+| `samples` | Solver row | `contact`, `signed_distance` |
+| `transitions` | Solver state row | Per-vertex world-frame forces, contact and environment wrenches, and target-object center-of-mass pose and velocity |
+| `timeline` | Solver row | `solver_row`, `solver_time_s`, `source_position`, `tactile_flags`, `force_valid`, `target_object`, `closing_solver_row` |
 
-- 紧凑 prepared manifest 在载荷组件中声明 `row_metadata: tactile.timeline`。
-  三张表按 episode 和 solver 行对齐。读取器从 timeline 还原逻辑标签字段，
-  兼容含重复字段的旧 prepared 版本。监督区间需要时从 timeline 生成。
-  对旧标签编号等于源帧编号的稀疏静帧数据，组件可声明
-  `solver_index_column: source_position`，以保留原标签编号与内容校验值。
-- `timeline.tactile_flags` 的 bit 0/1 是左右手 presence，bit 2/3 是 contact 和
-  proximity 有效位。`contact` 为 uint8，`signed_distance` 为 float16 米，
-  截断到 ±0.25 m。每行按左右手各 778 个 MANO 顶点排列。
-- `timeline.force_valid` 标记力监督是否有效。顶点力和 wrench
-  使用 solver 的参考质量约定。参考质量、COM、惯量、`object_ids` 与
-  target slot 对齐。Articulated 数据另外存储 generalized wrench 和 joint state。
-- `source_position` 记录源视频帧坐标，包括求解器重采样时的分数位置。
-  独立静帧允许标签稀疏覆盖原视频，按载荷行读取标签、按源帧位置读取 RGB 和相机。
-  静帧的 solver 时间和结束行为空，每行可有独立的 object slot 与重力。
-- 动态行的 `closing_solver_row` 只在同一目标参考系下有下一状态时存在。
-  直接力监督可使用片段最后的有效行，rollout 还需要连续间隔和结束状态。
-- episode 内嵌 tactile context 保存 topology、频率、物理参数与内容摘要。
-  `tactile_sha1` 按 `solver_sample`、`source_position`、`flags`、
-  `contact`、`signed_distance` 的顺序校验逻辑数组，独立于 Parquet 分片。
-  `force_sha1` 覆盖该 episode 已声明的力、状态及附加物理字段。
+- Compact manifests declare `row_metadata: tactile.timeline`. The tables
+  align by episode and solver row. Readers reconstruct label fields and
+  supervision spans from the timeline and also accept earlier layouts that
+  store duplicate fields. Sparse static datasets can declare
+  `solver_index_column: source_position` when the original label indices
+  match the source frame indices.
+- Bits 0 and 1 in `tactile_flags` encode left- and right-hand presence. Bits 2
+  and 3 encode contact and proximity validity. `contact` is uint8 and
+  `signed_distance` is float16 in metres, clipped to ±0.25 m. Each row
+  stores 778 MANO vertices per hand, with the left hand first.
+- `force_valid` marks rows with valid force supervision. Forces and wrenches
+  use the solver's reference mass. Mass, center of mass, inertia, and
+  `object_ids` align with the target slot. Articulated episodes also store
+  generalized wrenches and joint states.
+- `source_position` is a source-video frame coordinate and may be fractional
+  after solver resampling. For sparse static samples, use the payload row to
+  read labels and the source frame position to read RGB and camera data.
+  Static rows have null solver times and closing rows. Each can have its own
+  object slot and gravity vector.
+- Dynamic rows have a `closing_solver_row` when the next state uses the same
+  target reference frame. Direct force supervision can use the last valid
+  row of a clip. Rollout requires a contiguous valid interval and a closing state.
+- The episode's tactile context records topology, rates, physical parameters,
+  and content digests. `tactile_sha1` hashes the logical arrays in the order
+  `solver_sample`, `source_position`, `flags`, `contact`, and
+  `signed_distance`, independently of Parquet sharding. `force_sha1` covers
+  the declared force, state, and auxiliary physics fields.
 
-## 训练和评测读取
+## Training and evaluation
 
-训练从可解码的源帧选择片段起点，同一个 epoch 的样本数由各源数据配额控制。
-从起点按模型的时间间隔取后续图像，RGB 映射、几何对齐和力监督分别核验。
-当前模型每个视觉步对应最多三个 30 Hz solver 间隔。直接力预测只监督实际
-与输入图像对齐的 solver 行，rollout 使用有效连续区间和同目标的结束状态。
-稀疏视频沿用原视图的 causal hold，几何只在与实际显示帧对齐时有效。
-验证和评测固定采样器种子，报告中记录 prepared manifest 和力尺度。
+Training selects clip origins from decodable source frames. Per-dataset
+quotas determine the number of samples per epoch. The reader then samples
+images at the model's cadence and checks RGB mapping, geometry alignment,
+and force validity separately. Each visual step spans up to three 30 Hz
+solver intervals. Direct force supervision uses the solver row aligned with
+the input image. Rollout uses consecutive valid intervals with a closing
+state for the same target. For sparse video, retain the source view's
+causal hold and align geometry to the frame actually displayed.
+Validation and evaluation use fixed sampler seeds and record the prepared
+manifest and force scale.
 
-窗口缓存按 episode 有界保存标签，单目标全视图初始化可从行数和视频覆盖
-建立窗口，多目标片段按明确的目标槽位分段。训练快速路径可只物化
-单子步模型所需的 vertex-local 标签，完整相机系 GT 和 rollout 掩码仍由对应
-solver 行提供。contact-only 配置同时屏蔽直接力和 rollout。
+The bounded window cache stores labels by episode. Single-target full-frame
+windows can be indexed from the row count and video coverage. Multi-target
+segments are split by target slot. The training fast path can read just the
+vertex-local labels needed by the single-substep model. The corresponding
+solver rows still provide camera-frame reference forces and rollout masks.
+Contact-only configurations mask both direct force and rollout supervision.
 
-## 求解、发布和校验
+## Solving and publishing
 
-从仓库根目录运行。求解器的路径、设备和 worker 数由命令行参数设置。
+Run from the repository root. Set the solver paths, device, and worker count
+through command-line arguments.
 
 ```bash
 python scripts/labels/solve.py --help
 python scripts/labels/publish.py --solver-run <run> --dataset <name> --processed-root <root>
 ```
 
-`scripts/labels/solve.py` 输出 canonical solver NPZ。
-`scripts/labels/publish.py` 由原始 solver 有效行构造目标槽位和监督区间。
-多刚体目标优先采用标注对象，缺少对应标注时按该段实际受力物体的 wrench
-能量选取。无效力行清零，逐顶点力仍为各物体贡献之和。
-已转换数据中的历史参考系和力值按原发布结果保留。
+The solver writes NPZ files. The publisher derives target slots and
+supervision spans from valid solver rows. For multi-rigid-body segments, it
+uses the annotated target when available and otherwise selects a loaded
+object by wrench energy over the segment. It zeros invalid force rows and
+sums object contributions to obtain per-vertex forces. Existing converted
+data retain their published reference frames and force values.
 
-`publish.py --install` 在 prepared 数据集中写入版本化 tactile components
-与 episode context，保留原有 RGB、HMR、相机、对象和帧索引。先验证文件与
-范围，再原子更新该数据集的 `meta/info.json`。旧引用保留用于回滚。
-`scripts/labels/compact_tactile_release.py` 可对已有 prepared 分片做同样的投影，
-逐行验证被移除的字段可由 timeline 还原，分片写完后生成候选 manifest 和验收记录。
-重新求解改变数据 manifest 时，应更新依赖该版本的力统计和刚体参考。
+Add `--install` to publish versioned tactile components and episode context.
+The publisher checks files and ranges before atomically updating
+`meta/info.json`. The RGB, HMR, camera, object, and frame indices are
+preserved, and the old references are kept for rollback.
+`scripts/labels/compact_tactile_release.py` verifies that redundant fields
+can be recovered from the timeline before writing a candidate manifest and
+validation record. Update force statistics and rigid-body references when
+a new solve changes the dataset manifest on which they depend.
 
-`scripts/data_checks/validate_labels_v5.py` 通过实际消费者读取路径校验
-native timeline 和 tactile/force 内容摘要。Handcrop 更新另需通过
-`scripts/data_checks/check_handcrop_consumer_contract.py`。
-`tools/checks/tactohand/test_wrench_rollout_identity.py` 用已发布力与状态验证
-有效窗口的物理回放。
+## Rigid-body references
 
-## 刚体参考
+The optional `rigid_reference_v1` sidecar contains a per-episode
+`bodies.parquet` and `manifest.json`. The rows align with the solver and
+record per-body center-of-mass position, rotation, velocity, residual
+external wrench, gravity in world coordinates, vertex-to-body assignment
+for both hands (int16, with `-1` for unassigned), and body validity.
+`object_ids` follow the original label order. The `environment` wrench
+is inferred from the published forces and reference dynamics.
 
-训练前离线恢复缺失的逐刚体参考量，并写入独立的 `rigid_reference_v1`
-目录。每个数据集的 episode 包含 `bodies.parquet` 和原子发布的
-`manifest.json`，记录参考量版本和源数据指纹。字段为 solver-row 对齐的逐刚体 COM 位置、旋转、
-速度、external/residual wrench、逐帧世界重力、双手 778 顶点 owner（int16，
--1 表示无归属）和逐刚体有效位。object_ids 顺序与原标签索引一致。
-`environment` 是由已有动力学参考和发布的力场推算出的残差外力。
-恢复需验证已发布目标状态、速度及合并 wrench。位姿插值区间及其 Gaussian
-核邻域按原生成流程恢复逐刚体 `dynamics_valid`：无观测支撑的刚体为 neutral，
-不产生 hand/environment wrench，不进入该刚体的 rollout；其它有效刚体继续
-参与。持久化 `valid` 为原 force-valid 与逐刚体 dynamics-valid、恢复一致性
-的交集。全部应恢复的刚体行及场景一致性检查通过后才发布 ready，不能用
-neutral 标记掩盖真实的不一致。原 force 字段和有效标记均保持不变。
-源标签哈希、数据 manifest、恢复版本和 payload
-SHA256 用于失效检测；训练严格读取该目录，不运行归属查询或 force 求解。
-准备入口为 `scripts/data_checks/recipes/prepare_rigid_references_80workers.sh`。
-归属查询在 0.1 mm 并列时按 target 物体优先、否则最低 slot 确定性 tie-break。
-退化网格的有限 BVH 结果默认直接信任（`trust_degenerate`），只有 BVH 查询
-失败才做 float64 精确回退；需要旧的全量精确行为时传 `--exact-degenerate`。
-每个 manifest 的 `report.ownership_policy` 记录本次使用的策略。这样避免在
-物理不可分辨的边界或薄三角形上为逐三角形查询付出主要耗时。
-该入口默认 80 workers，将 BVH 查询分配到可见 CUDA GPU；精确三角形回退
-按物体跨帧批量处理。HOT3D/SHOW3D 辅助引用使用 observed-dynamics-v4 指纹，
-其它完整轨迹数据集保留原指纹以复用已完成结果。
+Recovery checks the published target states, velocities, and aggregate
+wrenches. Body-level `dynamics_valid` accounts for pose interpolation and
+its Gaussian smoothing neighborhood. Bodies without observed dynamics
+are neutral and contribute neither hand/environment wrench nor rollout
+supervision. Other valid bodies remain eligible. The stored `valid` mask
+combines force validity, dynamics validity, and recovery consistency.
+Reference validation leaves the original force data and masks intact.
+Training reads this sidecar directly. Label hashes, the dataset manifest,
+recovery version, and payload SHA-256 identify stale references.
 
-## MANO 几何迁移补充契约（2026-09-28）
+Vertex assignment breaks ties within 0.1 mm by preferring the target
+object, then the lowest slot. The default `trust_degenerate` policy accepts
+finite BVH results on degenerate geometry and uses exact float64 queries
+when BVH fails. The reference preparation option `--exact-degenerate`
+also uses exact queries for degenerate geometry. The manifest records
+the policy in `report.ownership_policy`.
 
-规范的 MANO 解码入口为 `core/geometry/mano_layer.py`。迁移后的 HMR 用 corrected
-PKL，布局为 `[trans3, full_axis_angle48, betas10]`，单位为米/弧度，
-`flat_hand_mean=True`、`use_pca=False`、`center_idx=None`。消费端不得额外翻转
-左手 shapedirs；入口根据已验证的模型指纹完成且仅完成一次必要的归一化。
-原始数据适配器须显式声明原始基底，不能通过替换模型冒充参数转换。
+## MANO geometry
 
-尚未迁移的源参数可在 `meta/info.json.mano_source_basis` 持久记录解码选择：
-`version=1`、`basis=stock|corrected`、`decision_status`、左右资产
-`assets_sha256` 和 `decision_evidence`。用户指定的选择使用
-`decision_status=user_confirmed`，证据须明确是用户选择而非独立来源认证。
-读取顺序为已安装 `mano_contract` → 本地 `mano_source_basis` → 历史审计
-registry；右手使用共用右手资产。该字段不表示参数已迁移或几何已通过认证，
-视频目录等无关元数据变化不使此选择失效。
+Decode MANO through `core/geometry/mano_layer.py`. Migrated HMR uses the
+corrected model with `[trans3, full_axis_angle48, betas10]` in metres and
+radians, `flat_hand_mean=True`, `use_pca=False`, and `center_idx=None`.
+The loader uses the model fingerprint to apply any required shape-basis
+correction once. Source adapters must declare the basis used to generate the
+parameters.
 
-消费者检查须直接使用 labels 的 `source_position` 选择几何行和源帧，支持
-单帧静态样本与 PROX 的重复帧时间轴；分段裁剪以 `frame_offset` 汇总覆盖。
-`hmr.mano=false` 且声明 `mesh_vertices=true` 的根优先读取存储顶点，
-`mesh_topology=mano_778` 时可复用 MANO faces，但不得解码占位 MANO 参数。
+For unmigrated parameters, `meta/info.json.mano_source_basis` can record
+`version=1`, `basis=stock|corrected`, `decision_status`, `assets_sha256`,
+and `decision_evidence`. Use `decision_status=user_confirmed` for a manual
+selection, and record that selection as the evidence. Readers prefer the
+installed `mano_contract`, then `mano_source_basis`, then a legacy
+registry. The right-hand model is shared. This metadata records the decode
+choice. Unrelated changes such as video paths leave it valid.
 
-裁剪能力可声明 `file_frame_offset_source=from_timestamp`，使用
-`round(from_timestamp * fps)` 定位 packed 视频；不得把已删除索引行留下的
-间隙压成累计行数。规范化后每段独立文件的起始时间戳归零，保留该声明。
-缺少物理 raw 视频时，已确认的 `crop_coordinate_space.raw_width/raw_height`
-可作为裁剪坐标参考；这不声明 raw 视频已恢复或可读取。
+Use `source_position` to select geometry and source frames, including
+static samples and repeated PROX frames. Aggregate segmented crop coverage
+using `frame_offset`. When `hmr.mano=false` and `mesh_vertices=true`, read
+the stored vertices. A `mesh_topology=mano_778` declaration allows reuse of
+MANO faces.
 
-`meta/info.json.mano_contract` 记录基底、姿态/平移约定、左右模型 SHA256、
-来源证据、shape 策略和 `geometry_revision`。stock → corrected 的安装门槛是
-所有 present 且有限的帧、每个顶点重解码误差的最大值默认 ≤1 mm。
-用户于 2026-09-28 明确接受 HIC 当前最大约 1.8983 mm 的拟合结果，因此
-**仅 HIC 使用 ≤2 mm**，其余数据集仍为 ≤1 mm；该例外写入来源决策的
-`precision_acceptance`，拟合与安装均须核对。`mano_contract` 同时记录
-`surface_error_limit_mm` 与实际 `surface_error_max_mm`。有无效或
-超门槛帧的分片不得安装，全部已声明分片通过后才能安装该数据集。当前
-拟合允许逐帧 beta 以满足表面精度，不宣称 subject beta 恒定。此 HMR
-事务备份仅服务于几何迁移，不改变 §8 对派生标签重建的处理决定。
+For packed crop videos with `file_frame_offset_source=from_timestamp`, use
+`round(from_timestamp * fps)` to preserve gaps in the index. Individually
+stored segments start at timestamp zero after normalization. When native
+RGB is absent, a verified `crop_coordinate_space.raw_width/raw_height`
+can still define the crop coordinate canvas.
 
-参数迁移或已确认的旧求解基底错误会置 `mano_dependent_labels.state=stale`；
-训练读取端必须拒绝这些标签。新求解 run 的 `mano_geometry_contract.json`
-绑定 `geometry_revision` 和每个 HMR 文件指纹。v5 publisher 对账后才能
-清除 stale，同时继续执行既有 handcrop 发布检查。HIC 不生成物体受力，
-使用 corrected MANO 重算手—手接触与有符号距离，保留原有非整数帧率
-solver 时间和源帧的映射规则。未决来源和隔离候选不得标记为 corrected。
+`meta/info.json.mano_contract` records the basis, pose and translation
+conventions, model hashes, source evidence, shape policy, and
+`geometry_revision`. Migration from stock to corrected requires a maximum
+vertex error of 1 mm over present, finite frames. HIC has a 2 mm limit
+recorded in `precision_acceptance`, based on a fit with a maximum error of
+about 1.8983 mm. The manifest records `surface_error_limit_mm` and
+`surface_error_max_mm`. Install a dataset only after all declared shards
+pass. The fit allows per-frame shape coefficients.
+
+A parameter migration or a confirmed solver-basis mismatch marks
+`mano_dependent_labels.state=stale`. Training rejects stale labels.
+A new solve binds the `geometry_revision` and HMR fingerprints in
+`mano_geometry_contract.json`. The publisher verifies these before
+clearing the flag and continues to apply the handcrop checks. For HIC,
+regenerate hand–hand contact and signed distance with corrected MANO
+while retaining the fractional solver-to-source timing. A corrected
+declaration requires a resolved source basis and validated geometry.
 
 ### Shared full-frame payloads and explicit crop-coordinate canvases (2026-10-20)
 
