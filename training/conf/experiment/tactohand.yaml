@@ -1,0 +1,225 @@
+# @package _global_
+task: tactohand_wrench
+seed: 42
+
+model:
+  wrench:
+    backbone: vit_large_patch16_dinov3
+    backbone_img_size: ${data.image_size}
+    pretrained: true
+    pretrained_path: ${oc.env:PRETRAINED_PATH,null}
+    freeze_backbone: false
+    gradient_checkpointing: false
+    temporal_layers: 6
+    temporal_heads: 8
+    # false = single-frame ablation: frames traverse the network independently
+    # (no cross-frame information flow; parameters and shapes unchanged)
+    temporal_fusion: true
+    dropout: 0.0
+    output_mode: vertex_force
+    query_heads: 8
+    query_layers: 2
+    # 1 = the head predicts only the image-aligned 30 Hz substep per token
+    # (substep 0); _physical_outputs stitches clamped GT vertex forces into
+    # substeps 1..2 so the wrench/rollout/metric 30 Hz axes survive.  The
+    # head's output layer is 2*778*3 = 4668-dim (was 14004 at substeps=3).
+    output_substeps: 1
+    hands: 2
+    predict_contact_proximity: true
+
+loss:
+  wrench:
+    type: l2
+    point_force_weight: 10.0
+    wrench_force_weight: 0.0
+    wrench_torque_weight: 0.0
+    # Active/zero split: plain frame-level MSE sat at the all-zero predictor
+    # floor (8.8% nonzero entries overall, 19.6% on engaged frames).  Active
+    # class = clamped target magnitude > 0.05 N, weighted per-vertex by CB
+    # counts from core/resources/tactohand/force_statistics_v5.npz (rebuild with
+    # scripts/dataset_maintenance/labels/build_force_statistics_v5.py); zero class
+    # keeps the pre-contact phantom-force suppression at lambda=0.1.
+    force_active_zero_split: true
+    force_active_threshold_n: 0.05
+    force_zero_weight: 0.1
+    force_active_huber_delta_n: 0.05
+    force_statistics_path: core/resources/tactohand/force_statistics_v5.npz
+    # Raw local-frame diagnostic path (overfit probes, default off): trains
+    # the head's vertex-local components with plain MSE against the reader's
+    # vertex_force_local_30hz targets — no engagement gate, no local->camera
+    # rotation, no split/CB/Huber.  Requires data.vertex_force_frame=
+    # vertex_local and force_active_zero_split=false (enforced at init).
+    raw_local_mse: false
+    # Direction-preserving magnitude clamps against solver-blowup labels
+    # (<0.1% of vertices reach 100-2400 N; artifacts/tactohand/
+    # force_magnitude_stats.json).  Applied symmetrically to GT targets and
+    # predicted physical forces; the prediction side also bounds the rollout
+    # inputs.  null disables (legacy behavior).
+    point_force_clamp_n: 20.0
+    wrench_force_clamp_n: 50.0
+    wrench_torque_clamp_nm: 10.0
+  rollout:
+    # reference: legacy checked solve; deferred: check solve_ex errors once per
+    # rollout; compiled: compile Newton only; compiled_substep: compile the
+    # complete rigid physical substep (transforms, Newton solve, pose update).
+    # compiled_solve3: use a fixed-size pivoted LU and its first-order adjoint
+    # inside the compiled physical substep.
+    # compiled_fused3: also specialize the substep's fixed-size matrix products.
+    # graphed_fused3: capture single-body rollouts and one optional multi-body shape.
+    # FP64, integration substeps, Newton count and objective remain unchanged.
+    implementation: compiled_substep
+    graph_extra_body_slots: 0
+    graph_flat_substep: false
+    # GT-damped rollout: the head predicts only the image-aligned substep;
+    # the rollout's other two substeps of every token replay clamped GT
+    # vertex forces (stitched in _physical_outputs).  That removes the
+    # compounding-error explosion mode behind the old instability (weight
+    # ramp-downs 5e-5 -> 1e-6 -> 0, see git log), but only 1/3 of the
+    # intervals bear gradient, so the signal is weaker — keep the weight
+    # small.  Loss value and metrics are NOT comparable with the retired
+    # full-prediction rollout.  Set weight: 0.0 to disable (then only the
+    # val-side rollout metrics remain, and no rollout loss is logged).
+    weight: 1.0e-3
+    start_epoch: 3
+    horizon_10hz: 4
+    position_scale_m: 0.01
+    rotation_scale_rad: 0.1
+    position_weight: 1.0
+    rotation_weight: 1.0
+    joint_weight: 1.0
+    warmup_epochs: 4
+  contact_proximity:
+    contact_weight: 1.0
+    # Stage-1 engagement gate BCE weight; contact_weight now applies to the
+    # stage-2 conditional VCB (engaged hand-frames only).
+    gate_weight: 0.1
+    # Structural sharing: force = sigmoid(gate) * raw_force in
+    # _physical_outputs.  Pre-contact (20mm) frames carry zero force targets,
+    # so this shapes inference without dropping any nonzero supervision.
+    force_gate: true
+    proximity_weight: 4.0
+  haco:
+    # Current mesh loss uses bundled counts; legacy HACO assets are optional.
+    contact_data_path: null
+    contact_means_path: null
+    v_regressor_336_path: null
+    v_regressor_84_path: null
+    mano_faces_path: null
+    j_regressor_path: null
+    # Conditional per-vertex class counts from labels-v5 itself (engaged
+    # hand-frames; P(contact|engaged)=0.1405 pooled) — matches the stage-2
+    # VCB population.  Rebuild after label regeneration with
+    # scripts/dataset_maintenance/labels/build_contact_statistics_v5.py.
+    contact_statistics_path: core/resources/tactohand/contact_statistics_v5.npz
+
+training:
+  # Plain DDP: the loss graph keeps every parameter connected on every batch
+  # (force head always runs; skip paths return graph-connected zeros, e.g.
+  # VCBLoss's no-engaged-frames fallback).  find_unused_parameters=True made
+  # the reducer skip bucket allreduces per rank's data-dependent unused set,
+  # desynchronizing the NCCL collective order at the epoch-end flush and
+  # deadlocking every 8-GPU run at the first epoch end (2026-09-14/15).
+  strategy: ddp
+  max_epochs: 1000
+  precision: bf16-mixed
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 2
+  check_val_every_n_epoch: 1
+  optimizer:
+    lr: 5.0e-5
+    backbone_lr: 5.0e-5
+    weight_decay: 1.0e-4
+    betas: [0.9, 0.999]
+  scheduler:
+    name: cosine
+    min_lr_ratio: 0.1
+    warmup_epochs: 2
+    warmup_steps: 10
+  compile:
+    enabled: true
+    mode: default
+    backend: auto
+    fullgraph: false
+    dynamic: false
+    modules: [network.temporal, network.query_head]
+
+metrics:
+  rollout_integrator: implicit_midpoint
+  implicit_iterations: 6
+  rollout_horizons: [1, 2, 4, 8]
+  rollout_subsets: [all, real_only, padding_only, boundary_crossing]
+  train_max_batches: 0
+  val_max_batches: null
+  explosion_linear_speed_m_s: 100.0
+  explosion_angular_speed_rad_s: 1000.0
+  tensorboard_rollout_horizons: [4]
+  tensorboard_rollout_metrics:
+    - position_ade_m
+    - rotation_ade_rad
+    - explosion_rate
+
+checkpoint:
+  monitor: loss/val/point_force
+  mode: min
+  save_top_k: 1
+  save_last: true
+  filename: best_val_point_force-epoch={epoch:02d}
+  additional_monitors:
+    - monitor: loss/val/wrench_torque
+      mode: min
+      save_top_k: 1
+      filename: best_val_wrench_torque-epoch={epoch:02d}
+    # Global (cross-dataset) val keys, NOT per-dataset keys: the per-dataset
+    # groups are registered from data.val_datasets (model.py), so a run that
+    # trims val_datasets (dexycb-only fine-tunes) would crash ModelCheckpoint
+    # with "could not find the monitored key" at the first epoch end
+    # (2026-09-18 1node_8gpu_20260918_220620).  Global groups are always
+    # registered and reduce to the single dataset when val has one entry.
+    - monitor: epoch/metrics/val/contact/f1
+      mode: max
+      save_top_k: 1
+      filename: best_val_contact_f1-epoch={epoch:02d}
+    - monitor: epoch/metrics/val/proximity/mae
+      mode: min
+      save_top_k: 1
+      filename: best_val_proximity_mae-epoch={epoch:02d}
+
+logging:
+  log_every_n_steps: 1
+  verbosity: normal
+  console:
+    progress_every_n_steps: 20
+  tensorboard:
+    enabled: true
+    level: core
+    scalar_every_n_steps: 1
+    flush_secs: 10
+  project: video2contact
+  name: tactohand
+  device_stats:
+    enabled: false
+  visualization:
+    enabled: false
+  wandb:
+    enabled: false
+    log_model: false
+
+profiling:
+  enabled: false
+  print_interval_steps: 100
+  window_size: 50
+  warmup_steps: 1
+  sync_cuda: true
+  log_to_logger: false
+
+data:
+  predict_both_hands: true
+  # tau=10 left the 0-20mm band at 0.82..1.00 (18% of target range) and the
+  # head only beat the predict-mean baseline by 11% (2026-09-14 labels-v5
+  # scan).  20 lifts that band to 0.67..1.00, half-decay 35mm.  proximity/mae
+  # is NOT comparable across tau changes.
+  proximity_tau: 20.0
+  vertex_force_frame: vertex_local
+  # The published manifest stats carry whole-row RMS. Nonzero RMS remains
+  # opt-in and requires point_force_nonzero_* statistics in the dataset.
+  point_force_scale_source: rows_rms

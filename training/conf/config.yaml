@@ -1,0 +1,123 @@
+defaults:
+- _self_
+- data: tactohand
+- experiment: tactohand_384
+seed: 42
+task: tactohand_wrench
+resume_from: null
+resume_weights_only: false
+resume_exclude_key_prefixes: []
+diagnostics:
+  distributed_trace:
+    enabled: false
+    stack_dump_interval_s: 120
+model: {}
+loss:
+  haco:
+    contact_data_path: ${oc.env:HACO_CONTACT_DATA_PATH,null}
+    contact_means_path: ${oc.env:HACO_CONTACT_MEANS_PATH,null}
+    v_regressor_336_path: ${oc.env:HACO_V_REGRESSOR_336_PATH,null}
+    v_regressor_84_path: ${oc.env:HACO_V_REGRESSOR_84_PATH,null}
+    mano_faces_path: ${oc.env:HACO_MANO_FACES_PATH,null}
+    j_regressor_path: ${oc.env:HACO_J_REGRESSOR_PATH,null}
+    beta: 0.9999
+    reg_weight: 0.1
+    smooth_weight: 1.0
+training:
+  max_epochs: 100
+  check_val_every_n_epoch: 1
+  val_check_interval_steps: 0
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 2
+  precision: bf16-mixed
+  matmul_precision: high
+  optimizer:
+    name: adamw
+    lr: 2.0e-05
+    backbone_lr_scale: 1.0
+    weight_decay: 0.05
+    betas:
+    - 0.9
+    - 0.999
+    fused: false
+    foreach: true
+    capturable: false
+  scheduler:
+    name: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  compile:
+    enabled: false
+    mode: reduce-overhead
+    backend: auto
+    fullgraph: false
+    dynamic: false
+    modules: []
+    dynamic_modules: []
+  accelerator: gpu
+  devices: 1
+  num_nodes: 1
+  strategy: auto
+  gpu_ids:
+  - 0
+validation:
+  per_dataset_metrics:
+    enabled: false
+    log_keys:
+    - '*'
+logging:
+  log_every_n_steps: 50
+  verbosity: normal
+  save_dir: ./logs
+  console:
+    progress_every_n_steps: 50
+  tensorboard:
+    enabled: true
+    level: core
+    scalar_every_n_steps: 50
+    flush_secs: 10
+  visualization:
+    enabled: false
+    outputs:
+    - image
+    - handcrop_image
+    - gt_contact_glb
+    - pred_contact_glb
+    - metadata
+    default_mano_when_missing: false
+  device_stats:
+    enabled: true
+  wandb:
+    enabled: false
+    log_model: false
+eval:
+  checkpoint: null
+  output_json: null
+  datasets: []
+  limit_batches: 0
+  no_progress: false
+checkpoint:
+  dirpath: ./checkpoints
+  monitor: val/f1_mean
+  mode: max
+  save_top_k: 3
+  save_last: true
+  stream_local_writes: false
+  enable_version_counter: true
+  additional_monitors:
+  - monitor: val/total_loss
+    mode: min
+    save_top_k: 2
+    filename: best_loss-epoch={epoch:02d}-val_total_loss={val/total_loss:.4f}
+profiling:
+  enabled: false
+  print_interval_steps: 50
+  window_size: 50
+  warmup_steps: 5
+  sync_cuda: true
+  log_to_logger: true
+hydra:
+  job:
+    chdir: false
+  run:
+    dir: ${logging.save_dir}/${oc.env:V2C_RUN_VERSION}

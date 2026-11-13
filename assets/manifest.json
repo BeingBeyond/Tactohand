@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-05",
+  "groups": {
+    "mano/stock": {
+      "source": "Existing original MANO/SMPL-H bundle; original license/info retained",
+      "consumers": [
+        "core.geometry.mano_layer",
+        "training and profiling recipes",
+        "EgoPHI",
+        "ContactPrompt"
+      ]
+    },
+    "mano/corrected": {
+      "source": "Local left shapedirs correction; preserved export evidence in provenance/",
+      "consumers": [
+        "core.geometry.mano_layer",
+        "label generation recipe"
+      ]
+    },
+    "mano/topology": {
+      "source": "Existing local face arrays; exact upstream version unverified",
+      "consumers": []
+    },
+    "smplh": {
+      "source": "Original payloads previously under assets/mano/models",
+      "consumers": []
+    },
+    "smplx": {
+      "source": "Existing local model archive; version.txt preserved",
+      "consumers": []
+    },
+    "mappings": {
+      "source": "User-retained existing vert2joint.pkl; producer and schema unverified",
+      "consumers": []
+    },
+    "pretrained/visual_encoder": {
+      "source": "https://huggingface.co/timm/vit_large_patch16_dinov3.lvd1689m",
+      "revision": "30c1109559f65dea34316b0d4842d35c5771fe11",
+      "consumers": [
+        "training.tactohand_wrench.nn.network.QueryForceWrenchNetwork",
+        "local 384/256 campaign launchers"
+      ]
+    }
+  },
+  "files": {
+    "assets/mano/stock/models/LICENSE.txt": {
+      "bytes": 4330,
+      "sha256": "75fc4da03259504ce9a4ed2418ab98dd59647add7ff95e7691c4d55fb0e3cf63",
+      "previous_path": "assets/mano/models/LICENSE.txt",
+      "required": false
+    },
+    "assets/mano/stock/models/MANO_LEFT.pkl": {
+      "bytes": 3821391,
+      "sha256": "c4022f7083f2ca7c78b2b3d595abbab52debd32b09d372b16923a801f0ea6a30",
+      "previous_path": "assets/mano/models/MANO_LEFT.pkl",
+      "required": true
+    },
+    "assets/mano/stock/models/MANO_RIGHT.pkl": {
+      "bytes": 3821356,
+      "sha256": "45d60aa3b27ef9107a7afd4e00808f307fd91111e1cfa35afd5c4a62de264767",
+      "previous_path": "assets/mano/models/MANO_RIGHT.pkl",
+      "required": true
+    },
+    "assets/smplh/SMPLH_female.pkl": {
+      "bytes": 130423021,
+      "sha256": "b3113724e824cf8f990977f327eaad724c943a56d895b72dc78c6fb647aa0e1e",
+      "previous_path": "assets/mano/models/SMPLH_female.pkl",
+      "required": false
+    },
+    "assets/smplh/SMPLH_male.pkl": {
+      "bytes": 130422893,
+      "sha256": "996338a29346b4d4bca2d7758d0304a346e833c10d1482b3b15d31164840dc3c",
+      "previous_path": "assets/mano/models/SMPLH_male.pkl",
+      "required": false
+    },
+    "assets/mano/stock/models/info.txt": {
+      "bytes": 95,
+      "sha256": "e172fdc3ea8c6143ad24867f107ffee99744db2212d0b98701a10db4d16f097e",
+      "previous_path": "assets/mano/models/info.txt",
+      "required": false
+    },
+    "assets/mano/topology/mano_left_faces.npy": {
+      "bytes": 37040,
+      "sha256": "64c8c4007b91233cc77e5ffb85f269c5f385048d369d9adbe215030bd65dc9d8",
+      "previous_path": "assets/mano/mano_left_faces.npy",
+      "required": false
+    },
+    "assets/mano/topology/mano_right_faces.npy": {
+      "bytes": 37040,
+      "sha256": "ba80ad4def91e5a3ebe713c913d45727709700f08264573c4f55a8bb167173e1",
+      "previous_path": "assets/mano/mano_right_faces.npy",
+      "required": false
+    },
+    "assets/smplh/SMPL_body_faces.npy": {
+      "bytes": 330752,
+      "sha256": "b7a541f7d14adc02cfc9a4fcaa476cf43fd489a298b6dcc53ee22bc172ed02e1",
+      "previous_path": "assets/mano/SMPL_body_faces.npy",
+      "required": false
+    },
+    "assets/mano/corrected/provenance/manifest.json": {
+      "bytes": 870,
+      "sha256": "c0f06221b3aa93fe2dbf4ab5922a7e034ab66745b59b1a6b528009efba46b623",
+      "previous_path": "assets/mano_corrected/manifest.json",
+      "required": false
+    },
+    "assets/mano/corrected/models/MANO_LEFT.pkl": {
+      "bytes": 3447748,
+      "sha256": "70a2ffca4f09bef54a12b0a3ce078df456e2646bd283f3c55bd1bf5e2b5b5922",
+      "previous_path": "assets/mano_corrected/models/MANO_LEFT.pkl",
+      "required": true
+    },
+    "assets/mano/corrected/provenance/verification.json": {
+      "bytes": 463,
+      "sha256": "ab8747bd6db55861f86b44ce7674fb42f03f153d9d15f4dcdd2bbf50703116a1",
+      "previous_path": "assets/mano_corrected/verification.json",
+      "required": false
+    },
+    "assets/smplx/SMPLX_FEMALE.npz": {
+      "bytes": 108794146,
+      "sha256": "b2a3686c9d6d218ff6822fba411c607a3c8125a70af340f384ce68bebecabe0e",
+      "previous_path": "assets/models/smplx/SMPLX_FEMALE.npz",
+      "required": false
+    },
+    "assets/smplx/SMPLX_FEMALE.pkl": {
+      "bytes": 544434140,
+      "sha256": "f3ac7af258fd217ab480b839c011545e5826cfa333ab34b3c98244ee3039bddd",
+      "previous_path": "assets/models/smplx/SMPLX_FEMALE.pkl",
+      "required": false
+    },
+    "assets/smplx/SMPLX_MALE.npz": {
+      "bytes": 108753445,
+      "sha256": "ab318e3f37d2bfaae26abf4e6fab445c2a610e1d63714794d60379cc263bc2a5",
+      "previous_path": "assets/models/smplx/SMPLX_MALE.npz",
+      "required": false
+    },
+    "assets/smplx/SMPLX_MALE.pkl": {
+      "bytes": 544477159,
+      "sha256": "af7ebc82e44cf098598685474c0592049ddfaca8e850feb0c2b88343f9aacee3",
+      "previous_path": "assets/models/smplx/SMPLX_MALE.pkl",
+      "required": false
+    },
+    "assets/smplx/SMPLX_NEUTRAL.npz": {
+      "bytes": 108752058,
+      "sha256": "376021446ddc86e99acacd795182bbef903e61d33b76b9d8b359c2b0865bd992",
+      "previous_path": "assets/models/smplx/SMPLX_NEUTRAL.npz",
+      "required": false
+    },
+    "assets/smplx/SMPLX_NEUTRAL.pkl": {
+      "bytes": 544173380,
+      "sha256": "381c808965deb4f5e845f8c3eddb0cd69930cc72e5774ce4f34c4ce3cf058361",
+      "previous_path": "assets/models/smplx/SMPLX_NEUTRAL.pkl",
+      "required": false
+    },
+    "assets/smplx/version.txt": {
+      "bytes": 33,
+      "sha256": "3ec3553966b75184f42e4d6b987280ca159bc8284cd7f70b0964b92fa7d619da",
+      "previous_path": "assets/models/smplx/version.txt",
+      "required": false
+    },
+    "assets/mappings/vert2joint.pkl": {
+      "bytes": 130882,
+      "sha256": "8b5635f860adbb6baa11080be527cc99d97b7951549875911a804dac65d63d11",
+      "previous_path": "assets/ours/vert2joint.pkl",
+      "required": true
+    },
+    "assets/pretrained/visual_encoder/timm-vit_large_patch16_dinov3.lvd1689m/model.safetensors": {
+      "bytes": 1212347640,
+      "sha256": "45172f209c9583c40538afc26b60a07033e6fcc2e8c30228338e6b2e932e7941",
+      "required": false,
+      "source": "https://huggingface.co/timm/vit_large_patch16_dinov3.lvd1689m",
+      "revision": "30c1109559f65dea34316b0d4842d35c5771fe11"
+    }
+  },
+  "links": {
+    "assets/mano/stock/MANO_LEFT.pkl": {
+      "target": "models/MANO_LEFT.pkl",
+      "required": true
+    },
+    "assets/mano/stock/MANO_RIGHT.pkl": {
+      "target": "models/MANO_RIGHT.pkl",
+      "required": true
+    },
+    "assets/mano/corrected/models/MANO_RIGHT.pkl": {
+      "target": "../../stock/models/MANO_RIGHT.pkl",
+      "required": true
+    },
+    "third_party/EgoPHI/arctic_data/data/body_models/mano": {
+      "target": "../../../../../assets/mano/stock",
+      "required": false
+    },
+    "third_party/ContactPrompt_RELEASE/data/base_data/human_models/mano/MANO_LEFT.pkl": {
+      "target": "../../../../../../assets/mano/stock/models/MANO_LEFT.pkl",
+      "required": false
+    },
+    "third_party/ContactPrompt_RELEASE/data/base_data/human_models/mano/MANO_RIGHT.pkl": {
+      "target": "../../../../../../assets/mano/stock/models/MANO_RIGHT.pkl",
+      "required": false
+    }
+  },
+  "archived": {
+    "artifacts/asset_archive/20261104/retired/mano_corrected.done": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "previous_path": "assets/mano_corrected/.done"
+    },
+    "artifacts/asset_archive/20261104/downloads/smplx_npz.zip": {
+      "bytes": 90885221,
+      "sha256": "0f41f873b4275cad590b32cec4f9b69a576ddb65e4aefc567458726a0eedeb87",
+      "previous_path": "assets/models/smplx/smplx_npz.zip"
+    },
+    "artifacts/asset_archive/20261104/downloads/models_smplx_v1_1.zip": {
+      "bytes": 870108517,
+      "sha256": "cb593838a5d602395735081c7a8fd1d6b04fba261042b84e24644d875039be61",
+      "previous_path": "assets/models_smplx_v1_1.zip"
+    },
+    "artifacts/asset_archive/20261104/retired/2021_CVPR_CPF/anchor/anchor_mapping_path.pkl": {
+      "bytes": 136,
+      "sha256": "a046e9a30655c4020ee64279fc66a02233260d88997351b254a5da83a49bba1f",
+      "previous_path": "assets/2021_CVPR_CPF/anchor/anchor_mapping_path.pkl"
+    },
+    "artifacts/asset_archive/20261104/retired/2021_CVPR_CPF/anchor/anchor_region_vertex_idx_ring1.npz": {
+      "bytes": 3380,
+      "sha256": "61dfa5f374e7de3ae89bc75c0cbd8ceef5d5b5ec8603f3997f470f6284a16803",
+      "previous_path": "assets/2021_CVPR_CPF/anchor/anchor_region_vertex_idx_ring1.npz"
+    },
+    "artifacts/asset_archive/20261104/retired/2021_CVPR_CPF/anchor/anchor_weight.txt": {
+      "bytes": 1600,
+      "sha256": "cdd4fa633d65afc304e00fc98e89bb0416a4e45b7432fa3a1699c017f8c8bbe0",
+      "previous_path": "assets/2021_CVPR_CPF/anchor/anchor_weight.txt"
+    },
+    "artifacts/asset_archive/20261104/retired/2021_CVPR_CPF/anchor/face_vertex_idx.txt": {
+      "bytes": 371,
+      "sha256": "5cac6c4c480e9fb4276bee3cbbb8784995f74bf1008156496f7b5939831d918a",
+      "previous_path": "assets/2021_CVPR_CPF/anchor/face_vertex_idx.txt"
+    },
+    "artifacts/asset_archive/20261104/retired/2021_CVPR_CPF/anchor/merged_vertex_assignment.txt": {
+      "bytes": 1942,
+      "sha256": "0d5953a6392d28f80714688bd9fe31ecce3ebe5dcdaa14f56c9c261c7c3b4d6d",
+      "previous_path": "assets/2021_CVPR_CPF/anchor/merged_vertex_assignment.txt"
+    }
+  }
+}

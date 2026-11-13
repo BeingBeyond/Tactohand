@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "captured_from_commit": "34c022e",
+  "capture_date": "2026-10-28",
+  "description": "Byte-identical snapshots of training resources. They were not regenerated against the current labels.",
+  "resources": {
+    "contact_statistics_v5.npz": {
+      "bytes": 106427,
+      "previous_path": "artifacts/tactohand/contact_statistics_v5.npz",
+      "origin": "Existing local artifact; original generation invocation and complete source label version unavailable.",
+      "generator": "scripts/dataset_maintenance/labels/build_contact_statistics_v5.py",
+      "embedded_source_name": "labels_v5:labels_v5_preview:24ds"
+    },
+    "force_statistics_v5.npz": {
+      "bytes": 41654,
+      "previous_path": "artifacts/tactohand/force_statistics_v5.npz",
+      "origin": "Existing local artifact; original generation invocation and complete source label version unavailable.",
+      "generator": "scripts/dataset_maintenance/labels/build_force_statistics_v5.py",
+      "generator_thresholds_n": [
+        0.05,
+        0.01
+      ]
+    },
+    "gigahands_tracking_good_objects.allowlist.json": {
+      "bytes": 215,
+      "previous_path": "artifacts/tactohand/gigahands_tracking_good_objects.allowlist.json",
+      "origin": "Existing manually curated gigahands object-name allowlist; original review provenance not established in this pass."
+    }
+  }
+}

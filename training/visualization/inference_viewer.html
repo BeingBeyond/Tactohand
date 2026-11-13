@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TactoHand · Prediction viewer</title>
+<style>
+:root{color-scheme:dark;--ink:#e9effc;--muted:#a7bad5;--edge:#30405b;--base:#0d1829;--panel:#17243a;--hot:#bdd5fa}
+*{box-sizing:border-box}body{margin:0;background:var(--base);color:var(--ink);font-family:"Instrument Sans",system-ui,sans-serif}
+main{max-width:1440px;margin:auto;padding:clamp(16px,3vw,42px)}
+header{display:flex;justify-content:space-between;align-items:end;gap:16px;border-bottom:1px solid var(--edge);padding-bottom:16px;margin-bottom:20px}
+h1{font-size:clamp(28px,4vw,49px);letter-spacing:-.055em;line-height:1;margin:0}
+h2{font-size:15px;font-weight:650;margin:0}.mono,output{font:13px "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+#name{color:var(--muted);overflow-wrap:anywhere;text-align:right}
+.layout{display:grid;grid-template-columns:minmax(250px,.7fr) minmax(0,1.3fr);gap:18px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--edge);min-width:0}
+.bar{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+video{display:block;width:100%;height:min(61vh,590px);background:#0a1424;object-fit:contain}
+.layout.mesh-only{grid-template-columns:1fr}
+.layout.mesh-only #source-panel{display:none}
+.layout.mesh-only .hands{max-width:920px;margin:auto}
+.tools{display:flex;gap:5px;flex-wrap:wrap}button,.file{background:transparent;color:var(--ink);border:1px solid var(--edge);padding:7px 10px;font:inherit;font-size:13px;cursor:pointer}
+button:hover,.file:hover{border-color:var(--muted)}button[aria-pressed=true]{background:var(--hot);border-color:var(--hot);color:#18201a}
+button:focus-visible,input:focus-visible,.file:focus-within{outline:2px solid var(--hot);outline-offset:2px}
+.file input{width:1px;height:1px;position:absolute;opacity:0}.file{display:inline-block}
+.hands{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--edge);border-bottom:1px solid var(--edge)}
+figure{min-width:0;margin:0;position:relative;background:#142137}figure+figure{border-left:1px solid var(--edge)}
+figcaption{position:absolute;top:11px;left:12px;color:var(--muted);font-size:13px;pointer-events:none}
+.force-readout{position:absolute;left:10px;bottom:10px;padding:4px 7px;background:#0d1829e8;color:#a9eaf6;pointer-events:none}
+canvas{width:100%;aspect-ratio:1 / 1;display:block;touch-action:none}canvas.orbit{cursor:grab}canvas.orbit:active{cursor:grabbing}
+.legend{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;padding:12px 14px;color:var(--muted)}
+.legend[hidden]{display:none}
+.categories{display:flex;flex-wrap:wrap;gap:16px}
+.swatch{display:inline-block;width:.85em;height:.85em;margin-right:6px;background:#a5b6c9;vertical-align:baseline}
+.swatch.active{background:#ff6657}
+.ramp{height:8px}
+.controls{color:var(--muted);font-size:13px}
+.controls input{accent-color:var(--hot);vertical-align:middle}
+.controls input[type=range]{width:72px}
+.controls select{background:var(--panel);color:var(--ink);border:1px solid var(--edge);padding:4px}
+.run-bar{margin-bottom:18px;justify-content:flex-start}
+.run-bar select{max-width:min(54vw,440px);margin-left:6px}
+#run-status{color:var(--muted);overflow-wrap:anywhere}
+.prediction-form{margin-bottom:18px}
+.prediction-form .bar{justify-content:flex-start}
+.prediction-form select{max-width:36vw;margin-left:6px}
+.prediction-form input[type=file]{max-width:100%}
+#prediction-status{margin:0;padding:0 14px 12px;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+#prediction-status:empty{display:none}
+.prediction-progress{display:flex;align-items:center;gap:12px;padding:0 14px 12px}
+.prediction-progress progress{width:min(360px,75%);height:12px;accent-color:var(--hot)}
+.prediction-progress output{min-width:4ch;color:var(--muted)}
+[hidden]{display:none!important}
+.note{margin:0;padding:0 14px 12px;color:var(--muted);font-size:13px;min-height:30px}
+.transport{display:flex;align-items:center;gap:9px;margin-top:18px;padding:12px}
+.transport input{min-width:0;flex:1;accent-color:var(--hot)}
+#position{min-width:107px;text-align:right;color:var(--ink)}
+@media(max-width:760px){.layout{grid-template-columns:1fr}video{height:min(43vh,420px)}header{align-items:start;flex-direction:column}#name{text-align:left}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>TactoHand</h1><div id="name" class="mono"></div></header>
+<form id="prediction-form" class="panel controls prediction-form">
+  <div class="bar">
+    <label>Checkpoint <select id="checkpoint-select" required disabled></select></label>
+    <label class="file">Choose video<input id="prediction-file" type="file" accept="video/*,.mkv,.mov,.avi" required></label>
+    <span id="prediction-file-name"></span>
+    <button id="predict" type="submit" disabled>Predict</button>
+  </div>
+  <p id="prediction-status" role="status"></p>
+  <div id="prediction-progress" class="prediction-progress" hidden>
+    <progress id="inference-progress" aria-label="Video inference progress" max="100"></progress>
+    <output id="inference-percent"></output>
+  </div>
+</form>
+<div class="bar panel controls run-bar">
+  <label>Prediction run <select id="run-select" disabled></select></label>
+  <button id="refresh-runs">Refresh runs</button>
+  <span id="run-status" role="status"></span>
+</div>
+<div id="layout" class="layout" hidden>
+<section id="source-panel" class="panel" aria-label="Source video">
+  <div class="bar"><h2>Source video</h2><label class="file">Open video<input id="video-file" type="file" accept="video/*"></label></div>
+  <video id="video" controls playsinline preload="metadata"></video>
+  <p class="note" id="video-status" role="status"></p>
+</section>
+<section class="panel" aria-label="Predicted fields">
+  <div class="bar"><h2>Predicted fields</h2><div class="tools" aria-label="Field">
+    <button data-field="none" aria-pressed="false" hidden>Rest mesh</button>
+    <button data-field="contact" aria-pressed="true">Contact</button>
+    <button data-field="distance" aria-pressed="false">Proximity</button>
+    <button data-field="force" aria-pressed="false">Force magnitude</button>
+  </div></div>
+  <div id="hands" class="hands">
+    <figure><figcaption>L · anatomical left</figcaption><canvas width="480" height="480" aria-label="Left hand prediction"></canvas><output class="force-readout" hidden></output></figure>
+    <figure><figcaption>R · anatomical right</figcaption><canvas width="480" height="480" aria-label="Right hand prediction"></canvas><output class="force-readout" hidden></output></figure>
+  </div>
+  <div class="bar controls" id="mesh-controls" hidden>
+    <label><input type="checkbox" id="left" checked> Left</label>
+    <label><input type="checkbox" id="right" checked> Right</label>
+    <label id="vectors-control" hidden><input type="checkbox" id="vectors"> 3D force vectors</label>
+    <label id="vector-gain-control" hidden>Arrow size <input type="range" id="vector-gain" min=".3" max="2.5" step=".1" value="1" disabled></label>
+    <label>Zoom <input type="range" id="zoom" min=".7" max="2" step=".05" value="1"></label>
+    <button id="reset">Reset view</button>
+    <button id="opposite">Opposite view</button>
+    <button id="mesh-only" aria-pressed="false">3D only</button>
+  </div>
+  <div id="contact-legend" class="legend categories mono"><span><i class="swatch"></i>No contact</span><span><i class="swatch active"></i>Contact (&gt; 0.5)</span></div>
+  <div id="continuous-legend" class="legend mono" hidden><span>0</span><span id="ramp" class="ramp"></span><span id="scale"></span></div>
+  <div class="bar controls" id="distance-control" hidden><label>Distance range
+    <select id="distance-range"><option>250</option><option>100</option><option>50</option><option>25</option></select> mm</label></div>
+  <p class="note" id="mode"></p>
+</section>
+</div>
+<div id="transport" class="panel transport" hidden>
+  <button id="play" aria-label="Play video">Play</button>
+  <button id="previous" aria-label="Previous prediction frame">‹</button>
+  <button id="next" aria-label="Next prediction frame">›</button>
+  <input id="seek" aria-label="Prediction frame" type="range" min="0" value="0" step="1">
+  <output id="position" for="seek" class="mono"></output>
+</div>
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const video = $("video"), seek = $("seek"), status = $("video-status");
+const runSelect = $("run-select"), runStatus = $("run-status");
+const canvases = [...document.querySelectorAll("canvas")];
+const forceReadouts = [...document.querySelectorAll(".force-readout")];
+const arrowHits = canvases.map(() => []);
+const buttons = [...document.querySelectorAll("[data-field]")];
+const handControls = ["left", "right"].map($);
+const vertices = 778;
+const palettes = {
+  distance: [[0,[255,241,182]],[.22,[252,163,93]],[.45,[232,101,112]],
+    [.68,[152,91,158]],[.84,[88,104,164]],[1,[56,90,127]]],
+  force: [[0,[31,56,102]],[.3,[71,102,191]],[.6,[189,87,179]],[1,[255,163,74]]],
+};
+const contactThreshold = 0.5;
+const contactColors = [[165,182,201],[255,102,87]];
+const contactColor = value => materialColor(contactColors[Number(value > contactThreshold)]);
+function bytes(value) {
+  const decoded = atob(value);
+  const output = new Uint8Array(decoded.length);
+  for (let i = 0; i < decoded.length; i++) output[i] = decoded.charCodeAt(i);
+  return output.buffer;
+}
+let data = null, meshes, projected, runRequest, listRequest;
+const initialView = hand => ({yaw: hand === 0 ? -.28 : .28, pitch: -.19});
+const views = canvases.map((_,hand) => initialView(hand));
+let frame = 0, field = "contact", zoom = 1, objectUrl;
+function materialColor(rgb, light=1, highlight=0) {
+  return "rgb(" + rgb.map((value,i) =>
+    Math.round(Math.min(255,value*light+[198,220,255][i]*highlight))).join(",") + ")";
+}
+function color(value, max, light=1, highlight=0) {
+  const clamped = Math.max(0, Math.min(max, value));
+  const t = field === "distance" ? Math.log1p(clamped/3)/Math.log1p(max/3) : clamped/max;
+  const stops = palettes[field];
+  const next = stops.findIndex(([position],i) => i > 0 && position >= t);
+  const [lo,a] = stops[next-1], [hi,b] = stops[next];
+  return materialColor(a.map((v,i) => v + (t-lo)/(hi-lo)*(b[i]-v)),light,highlight);
+}
+function smoothNormals(mesh) {
+  const normals = Array.from({length:vertices}, () => [0,0,0]);
+  for (let i = 0; i < mesh.faces.length; i += 3) {
+    const face = mesh.faces.subarray(i,i+3);
+    const [a,b,c] = [...face].map(v => mesh.xyz.subarray(v*3,v*3+3));
+    const u = [...b].map((v,j) => v-a[j]), w = [...c].map((v,j) => v-a[j]);
+    const cross = [u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]];
+    for (const v of face) cross.forEach((value,j) => normals[v][j] += value);
+  }
+  return normals.map(normal => {
+    const length = Math.hypot(...normal) || 1;
+    return normal.map(value => value/length);
+  });
+}
+function surfaceLight(normal) {
+  const direction = normal[2] < 0 ? -1 : 1;
+  const [x,y,z] = normal.map(value => value*direction);
+  const diffuse = Math.max(0,-.52*x-.46*y+.72*z);
+  const fill = Math.max(0,.67*x+.2*y+.71*z);
+  const rim = Math.pow(1-Math.min(1,z),2.8);
+  const specular = Math.pow(Math.max(0,-.27*x-.24*y+.93*z),24);
+  return [.52+.44*diffuse+.12*fill,.15*rim+.11*specular];
+}
+function project(mesh, width, {yaw, pitch}) {
+  const xy = [], z = [], c = Math.cos(yaw), s = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const rotate = (x,y,k) => {
+    const depth = -s*x+c*k;
+    return [c*x+s*k, -cp*y+sp*depth, sp*y+cp*depth];
+  };
+  let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+  for (let i = 0; i < vertices; i++) {
+    const [u,v,depth] = rotate(...mesh.xyz.subarray(i*3,i*3+3));
+    xy.push([u,v]); z.push(depth);
+    xmin = Math.min(xmin,u); xmax = Math.max(xmax,u);
+    ymin = Math.min(ymin,v); ymax = Math.max(ymax,v);
+  }
+  const scale = zoom*width*.77/Math.max(xmax-xmin,ymax-ymin);
+  const points = xy.map(([x,y]) => [width/2+(x-(xmax+xmin)/2)*scale,width/2+(y-(ymax+ymin)/2)*scale]);
+  const lights = mesh.normals.map(normal => surfaceLight(rotate(...normal)));
+  const faces = [];
+  for (let i = 0; i < mesh.faces.length; i += 3) {
+    const [a,b,c] = mesh.faces.subarray(i,i+3);
+    const [light,highlight] = lights[a].map((value,j) => (value+lights[b][j]+lights[c][j])/3);
+    faces.push({a,b,c,light,highlight,z:z[a]+z[b]+z[c]});
+  }
+  return {points, rotate, faces: faces.sort((a,b) => a.z-b.z)};
+}
+const projectHand = hand => project(meshes[hand],canvases[hand].width,views[hand]);
+function polygon(ctx, fill, points) {
+  ctx.fillStyle = ctx.strokeStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(...points[0]);
+  for (const point of points.slice(1)) ctx.lineTo(...point);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+function contactFace(ctx, points, values, light, highlight) {
+  // Clip the triangle along the linearly interpolated 0.5 contour.
+  const active = points.filter((_,i) => values[i] > contactThreshold).length;
+  polygon(ctx,materialColor(contactColors[Number(active === 3)],light,highlight),points);
+  if (active === 0 || active === 3) return;
+  const patch = [];
+  points.forEach((end,i) => {
+    const previous = (i+2)%3, start = points[previous];
+    const before = values[previous] > contactThreshold, after = values[i] > contactThreshold;
+    if (before !== after) {
+      const t = (contactThreshold-values[previous])/(values[i]-values[previous]);
+      patch.push(start.map((v,d) => v+t*(end[d]-v)));
+    }
+    if (after) patch.push(end);
+  });
+  polygon(ctx,materialColor(contactColors[1],light,highlight),patch);
+}
+function drawForceVectors(ctx, hand, {points,rotate}) {
+  const mesh = meshes[hand];
+  const {indices,values,normals,count} = mesh.vectors;
+  const reference = data.vectorScale;
+  const factor = Number($("vector-gain").value) * ctx.canvas.width * zoom * .32 / reference;
+  ctx.save();
+  ctx.strokeStyle = ctx.fillStyle = "#66d9ee";
+  ctx.lineWidth = 2;
+  for (let i = frame*count; i < (frame+1)*count; i++) {
+    const vertex = indices[i];
+    if (rotate(...normals.subarray(vertex*3,vertex*3+3))[2] < -.1) continue;
+    const components = values.subarray(i*3,i*3+3);
+    const magnitude = Math.hypot(...components);
+    const [dx,dy] = rotate(...components);
+    const [x,y] = points[vertex], u = dx*factor, v = dy*factor;
+    const length = Math.hypot(u,v);
+    if (length < 2.5) continue;
+    const head = Math.min(9,length*.45), ux = u/length, uy = v/length;
+    const tip = [x+u,y+v];
+    arrowHits[hand].push({x,y,u,v,vertex,magnitude});
+    ctx.beginPath();
+    ctx.moveTo(x,y);
+    ctx.lineTo(...tip);
+    ctx.stroke();
+    polygon(ctx,"#66d9ee",[tip,
+      [tip[0]-head*(ux+.45*uy),tip[1]-head*(uy-.45*ux)],
+      [tip[0]-head*(ux-.45*uy),tip[1]-head*(uy+.45*ux)]]);
+  }
+  ctx.restore();
+}
+function inspectForce(event, hand) {
+  const readout = forceReadouts[hand];
+  readout.hidden = true;
+  if (!arrowHits[hand].length) return;
+  const canvas = canvases[hand], rect = canvas.getBoundingClientRect();
+  const px = (event.clientX-rect.left)*canvas.width/rect.width;
+  const py = (event.clientY-rect.top)*canvas.height/rect.height;
+  let closest = null, distance = 8*canvas.width/rect.width;
+  for (const hit of arrowHits[hand]) {
+    const {x,y,u,v} = hit;
+    const t = Math.max(0,Math.min(1,((px-x)*u+(py-y)*v)/(u*u+v*v)));
+    const gap = Math.hypot(px-x-t*u,py-y-t*v);
+    if (gap < distance) { closest = hit; distance = gap; }
+  }
+  if (closest) {
+    readout.textContent = `Vertex ${closest.vertex} · |F| ${Number(closest.magnitude.toPrecision(4))} normalized`;
+    readout.hidden = false;
+  }
+}
+function draw() {
+  if (!data) return;
+  const modeLabel = meshes ? "MANO rest pose · drag to rotate" : "MANO vertex grids";
+  const metric = data.metrics[field];
+  const binary = field === "contact";
+  const distance = field === "distance";
+  const max = distance ? Number($("distance-range").value) : metric?.max;
+  $("contact-legend").hidden = !binary;
+  $("continuous-legend").hidden = !palettes[field];
+  $("distance-control").hidden = !distance;
+  if (palettes[field]) {
+    $("scale").textContent = `${Number(max.toPrecision(3))} ${metric.unit}`;
+    $("ramp").style.background = "linear-gradient(90deg," + palettes[field].map(
+      ([at,rgb]) => `rgb(${rgb.join(",")}) ${at*100}%`).join(",") + ")";
+  }
+  const arrows = $("vectors").checked;
+  $("mode").textContent = (field === "force" ? "Force magnitude · " : "") + modeLabel
+    + (arrows ? " · Point at an arrow for its magnitude" : "");
+  $("position").textContent = `${frame+1}/${data.times.length} · ${data.times[frame].toFixed(2)} s`;
+  $("position").title = data.indices ? `Source frame ${data.indices[frame]}` : "";
+  seek.value = frame;
+  canvases.forEach((canvas, hand) => {
+    const ctx = canvas.getContext("2d"), w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h);
+    arrowHits[hand] = [];
+    forceReadouts[hand].hidden = true;
+    if (meshes && !handControls[hand].checked) return;
+    const offset = (frame*2+hand)*vertices;
+    if (projected) {
+      const {points,faces} = projected[hand];
+      for (const {a,b,c,light,highlight} of faces) {
+        const [p,q,r] = [points[a],points[b],points[c]];
+        const triangle = [p,q,r];
+        if (field === "none") {
+          polygon(ctx,materialColor(contactColors[0],light,highlight),triangle);
+        } else {
+          const values = [a,b,c].map(index => metric.values[offset+index]);
+          if (binary) contactFace(ctx,triangle,values,light,highlight);
+          else polygon(ctx,color((values[0]+values[1]+values[2])/3,max,light,highlight),triangle);
+        }
+      }
+      if (arrows && meshes[hand].vectors) drawForceVectors(ctx,hand,projected[hand]);
+    } else {
+      const side = Math.ceil(Math.sqrt(vertices)), cell = w*.87/side, inset = (w-side*cell)/2;
+      for (let i = 0; i < vertices; i++) {
+        const value = metric.values[offset+i];
+        ctx.fillStyle = binary ? contactColor(value) : color(value,max);
+        ctx.fillRect(inset+(i%side)*cell,inset+Math.floor(i/side)*cell,cell-1,cell-1);
+      }
+    }
+  });
+}
+function choose(index, syncVideo) {
+  if (!data) return;
+  frame = Math.max(0, Math.min(data.times.length-1, index));
+  if (syncVideo && video.readyState > 0) video.currentTime = Math.min(video.duration, data.times[frame]);
+  draw();
+}
+function nearest(time) {
+  let left = 0, right = data.times.length-1;
+  while (left < right) {
+    const mid = Math.floor((left+right)/2);
+    if (data.times[mid] < time) left = mid+1; else right = mid;
+  }
+  return left > 0 && time-data.times[left-1] <= data.times[left]-time ? left-1 : left;
+}
+function sync() {
+  if (!data || video.readyState === 0) return;
+  const index = nearest(video.currentTime);
+  if (index !== frame) choose(index,false);
+}
+video.addEventListener("timeupdate",sync);
+video.addEventListener("seeked",sync);
+function updatePlay() {
+  $("play").textContent = video.paused ? "Play" : "Pause";
+  $("play").setAttribute("aria-label", video.paused ? "Play video" : "Pause video");
+}
+video.addEventListener("play",updatePlay);
+video.addEventListener("pause",updatePlay);
+$("play").onclick = () => {
+  if (!video.paused) video.pause();
+  else if (video.readyState > 0) video.play().catch(() => {
+    status.textContent = "Video playback is unavailable.";
+  });
+};
+if ("requestVideoFrameCallback" in video) {
+  const onFrame = () => { sync(); video.requestVideoFrameCallback(onFrame); };
+  video.requestVideoFrameCallback(onFrame);
+}
+video.addEventListener("loadedmetadata",() => {
+  if (!data) return;
+  status.textContent = video.videoWidth > 0 ? "" : "Video codec unavailable. Open a browser-compatible copy.";
+  video.currentTime = Math.min(video.duration,data.times[frame]);
+});
+video.addEventListener("error",() => {
+  if (data) status.textContent = "Video unavailable. Open the source clip to sync playback.";
+});
+function setVideo(url) {
+  video.pause();
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+  objectUrl = url?.startsWith("blob:") ? url : undefined;
+  if (url) video.src = url;
+  else {
+    video.removeAttribute("src");
+    video.load();
+  }
+}
+$("video-file").addEventListener("change",event => {
+  const file = event.target.files[0];
+  if (file) setVideo(URL.createObjectURL(file));
+});
+seek.addEventListener("input",() => choose(Number(seek.value),true));
+$("previous").onclick = () => choose(frame-1,true);
+$("next").onclick = () => choose(frame+1,true);
+$("distance-range").onchange = draw;
+buttons.forEach(button => button.onclick = () => {
+  field = button.dataset.field;
+  buttons.forEach(item => item.setAttribute("aria-pressed",String(item===button)));
+  draw();
+});
+{
+  const refreshView = () => {
+    projected = meshes?.map((_,hand) => projectHand(hand));
+    draw();
+  };
+  handControls.forEach(input => input.onchange = draw);
+  $("vectors").onchange = () => {
+    $("vector-gain").disabled = !$("vectors").checked;
+    draw();
+  };
+  $("vector-gain").oninput = draw;
+  $("zoom").oninput = () => { zoom = Number($("zoom").value); refreshView(); };
+  $("reset").onclick = () => {
+    views.forEach((view,hand) => Object.assign(view,initialView(hand)));
+    zoom = 1;
+    $("zoom").value = 1;
+    refreshView();
+  };
+  $("opposite").onclick = () => {
+    for (const view of views) view.yaw += Math.PI;
+    refreshView();
+  };
+  $("mesh-only").onclick = () => {
+    const active = $("layout").classList.toggle("mesh-only");
+    $("mesh-only").setAttribute("aria-pressed",String(active));
+  };
+  canvases.forEach((canvas, hand) => {
+    let drag = null;
+    canvas.addEventListener("pointerdown",event => {
+      if (!meshes || event.button !== 0 || drag) return;
+      drag = {id: event.pointerId, x: event.clientX, y: event.clientY, distance: 0};
+      canvas.setPointerCapture(event.pointerId);
+    });
+    canvas.addEventListener("lostpointercapture",event => {
+      if (drag?.id === event.pointerId) drag = null;
+    });
+    canvas.addEventListener("pointerleave",() => { forceReadouts[hand].hidden = true; });
+    canvas.addEventListener("pointerup",event => {
+      if (drag?.id === event.pointerId && drag.distance < 5) inspectForce(event,hand);
+    });
+    canvas.addEventListener("pointermove",event => {
+      if (!meshes) return;
+      if (drag?.id !== event.pointerId) {
+        if (!drag) inspectForce(event,hand);
+        return;
+      }
+      const view = views[hand];
+      drag.distance += Math.hypot(event.clientX-drag.x,event.clientY-drag.y);
+      view.yaw += (event.clientX-drag.x)*.012;
+      view.pitch = Math.max(-1.5,Math.min(1.5,view.pitch+(event.clientY-drag.y)*.012));
+      drag.x = event.clientX;
+      drag.y = event.clientY;
+      projected[hand] = projectHand(hand);
+      draw();
+    });
+  });
+}
+
+function installRun(payload) {
+  data = payload;
+  for (const metric of Object.values(data.metrics)) {
+    metric.values = new Float32Array(bytes(metric.data));
+    delete metric.data;
+  }
+  meshes = data.meshes?.map(mesh => ({
+    xyz: new Float32Array(bytes(mesh.vertices)), faces: new Uint16Array(bytes(mesh.faces)),
+    vectors: mesh.forceVectors && {
+      indices: new Uint16Array(bytes(mesh.forceVectors.indices)),
+      values: new Float32Array(bytes(mesh.forceVectors.values)),
+      normals: new Float32Array(bytes(mesh.forceVectors.normals)),
+      count: mesh.forceVectors.count,
+    },
+  }));
+  meshes?.forEach(mesh => { mesh.normals = smoothNormals(mesh); });
+  projected = meshes?.map((_,hand) => projectHand(hand));
+  canvases.forEach(canvas => canvas.classList.toggle("orbit", Boolean(meshes)));
+  $("mesh-controls").hidden = !meshes;
+  document.querySelector('[data-field="none"]').hidden = !meshes;
+  const vectorsAvailable = Boolean(meshes?.every(mesh => mesh.vectors));
+  $("vectors-control").hidden = $("vector-gain-control").hidden = !vectorsAvailable;
+  if (!vectorsAvailable) $("vectors").checked = false;
+  $("vector-gain").disabled = !$("vectors").checked;
+  if (!meshes) {
+    $("layout").classList.remove("mesh-only");
+    $("mesh-only").setAttribute("aria-pressed", "false");
+    if (field === "none") field = "contact";
+  }
+  buttons.forEach(button => button.setAttribute("aria-pressed",String(button.dataset.field===field)));
+  frame = 0;
+  seek.max = data.times.length - 1;
+  $("name").textContent = data.title;
+  status.textContent = data.video ? "" : "Open the source clip to sync playback.";
+  $("video-file").value = "";
+  setVideo(data.video?.url);
+  $("layout").hidden = $("transport").hidden = false;
+  draw();
+}
+
+async function fetchJson(url, options) {
+  const response = await fetch(url,options);
+  const value = await response.json();
+  if (!response.ok) throw new Error(value.error || `HTTP ${response.status}`);
+  return value;
+}
+async function loadRun(id) {
+  runRequest?.abort();
+  runRequest = new AbortController();
+  const {signal} = runRequest;
+  data = null;
+  meshes = projected = undefined;
+  setVideo();
+  $("layout").hidden = $("transport").hidden = true;
+  $("name").textContent = "";
+  if (!id) {
+    runStatus.textContent = "No completed runs found.";
+    return;
+  }
+  runStatus.textContent = "Loading predictions…";
+  try {
+    const payload = await fetchJson(`/api/runs/${encodeURIComponent(id)}`,{signal});
+    if (signal.aborted) return;
+    installRun(payload);
+    runStatus.textContent = "";
+  } catch (error) {
+    if (!signal.aborted) runStatus.textContent = `Could not open run: ${error.message}`;
+  }
+}
+async function refreshRuns(preferred) {
+  listRequest?.abort();
+  listRequest = new AbortController();
+  const {signal} = listRequest;
+  try {
+    const {runs} = await fetchJson("/api/runs",{signal});
+    if (signal.aborted) return;
+    const previous = preferred || runSelect.value;
+    runSelect.replaceChildren(...runs.map(({id}) => new Option(id,id)));
+    if (runs.some(({id}) => id === previous)) runSelect.value = previous;
+    runSelect.disabled = !runs.length;
+    await loadRun(runSelect.value);
+  } catch (error) {
+    if (!signal.aborted) runStatus.textContent = `Could not list runs: ${error.message}`;
+  }
+}
+const checkpointSelect = $("checkpoint-select"), predictionFile = $("prediction-file");
+const predictButton = $("predict"), predictionStatus = $("prediction-status");
+const progressBox = $("prediction-progress"), inferenceProgress = $("inference-progress");
+let predicting = false;
+function showPredictionProgress(percent = null) {
+  progressBox.hidden = false;
+  if (percent === null) inferenceProgress.removeAttribute("value");
+  else inferenceProgress.value = percent;
+  $("inference-percent").textContent = percent === null ? "" : `${percent}%`;
+}
+function updatePredictButton() {
+  predictButton.disabled = predicting || !checkpointSelect.value || !predictionFile.files.length;
+}
+async function refreshCheckpoints() {
+  try {
+    const {checkpoints} = await fetchJson("/api/checkpoints");
+    const previous = checkpointSelect.value;
+    checkpointSelect.replaceChildren(...checkpoints.map(({id}) => new Option(id,id)));
+    if (checkpoints.some(({id}) => id === previous)) checkpointSelect.value = previous;
+    checkpointSelect.disabled = !checkpoints.length;
+    if (!predicting) predictionStatus.textContent = checkpoints.length ? "" : "No checkpoints with matching YAML configs.";
+    updatePredictButton();
+  } catch (error) {
+    predictionStatus.textContent = `Could not list checkpoints: ${error.message}`;
+  }
+}
+checkpointSelect.onchange = updatePredictButton;
+predictionFile.onchange = () => {
+  $("prediction-file-name").textContent = predictionFile.files[0]?.name || "";
+  updatePredictButton();
+};
+$("prediction-form").onsubmit = async event => {
+  event.preventDefault();
+  const file = predictionFile.files[0];
+  if (predicting || !file || !checkpointSelect.value) return;
+  predicting = true;
+  updatePredictButton();
+  predictionStatus.textContent = "Uploading video…";
+  showPredictionProgress();
+  try {
+    const query = new URLSearchParams({checkpoint:checkpointSelect.value,filename:file.name});
+    const {id} = await fetchJson(`/api/jobs?${query}`,{
+      method:"POST",headers:{"Content-Type":"application/octet-stream"},body:file,
+    });
+    while (true) {
+      const job = await fetchJson(`/api/jobs/${encodeURIComponent(id)}`);
+      if (job.status === "failed") throw new Error(job.detail);
+      predictionStatus.textContent = job.detail;
+      const progress = job.progress;
+      if (job.status === "complete" || job.phase === "preview") showPredictionProgress(100);
+      else if (progress) showPredictionProgress(Math.floor(100*progress.completed/progress.total));
+      else showPredictionProgress();
+      if (job.status === "complete") {
+        await refreshRuns(id);
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve,500));
+    }
+  } catch (error) {
+    predictionStatus.textContent = `Prediction failed: ${error.message}`;
+    progressBox.hidden = true;
+  } finally {
+    predicting = false;
+    updatePredictButton();
+  }
+};
+runSelect.onchange = () => loadRun(runSelect.value);
+$("refresh-runs").onclick = () => { refreshRuns(); refreshCheckpoints(); };
+refreshRuns();
+refreshCheckpoints();
+</script>
+</body>
+</html>

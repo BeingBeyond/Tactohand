@@ -1,0 +1,19 @@
+{
+  "format_version": 1,
+  "operation": "flip_left_shapedirs_x",
+  "recognition_rule": "duplicated_or_mirrored_x_L1_ratio_below_0.001",
+  "source_x_same_l1": 0.0003668262320637405,
+  "source_x_mirrored_l1": 7.990258446501739,
+  "source_sha256": {
+    "LEFT": "c4022f7083f2ca7c78b2b3d595abbab52debd32b09d372b16923a801f0ea6a30",
+    "RIGHT": "45d60aa3b27ef9107a7afd4e00808f307fd91111e1cfa35afd5c4a62de264767"
+  },
+  "export_sha256": {
+    "LEFT": "70a2ffca4f09bef54a12b0a3ce078df456e2646bd283f3c55bd1bf5e2b5b5922",
+    "RIGHT": "45d60aa3b27ef9107a7afd4e00808f307fd91111e1cfa35afd5c4a62de264767"
+  },
+  "effective_left_shapedirs_sha256": "8c7977531be7176fc3a05404977bba642022fb70ca56fd488ca3f9cc17f6cac8",
+  "effective_left_shapedirs_dtype": "float64",
+  "loader_left_x_flip_required": false,
+  "note": "This does not convert existing dataset beta, pose or translation."
+}

@@ -1,0 +1,111 @@
+defaults:
+  - substep_force_schema
+  - _self_
+
+root: ${oc.env:DEXYCB_ROOT,}
+processed_root: ${oc.env:PROCESSED_ROOT,null}
+# Optional transitional override: a directory that holds only the labels-v5
+# meta/label_* tables + label streams, evaluated per <name>_lerobot child.
+# Defaults to each dataset root (the formal post-install layout).
+# Training mixture.  Defaults for a dataset not mentioned anywhere below:
+#   quota weight 1.0, full-frame video input, force supervision on iff the
+#   labels carry force streams (hic, decaf, hi4d, prox, reinterhand, rich,
+#   interhand26m are auto contact-only: no force streams, contact/proximity
+#   supervision only).  Adding a dataset means adding it here.
+datasets:
+  - arctic
+  - decaf
+  - dexycb
+  - h2o3d
+  - h2o
+  - hi4d
+  - hic
+  - ho3dv2
+  - ho3dv3
+  - hograspnet
+  - hoi4d
+  - hot3d
+  - interhand26m
+  - oakink-v1
+  - oakink-v2
+  - prox
+  - reinterhand
+  - rich
+  - taco
+  - show3d
+  - mow
+  - obman
+  - gigahands
+val_datasets: [hocap_multiview, dexycb, arctic]
+# Per-hand crop input (video_source=handcrop): windows show the
+# dominant-present hand's crop (ties go to the RIGHT hand); the off-crop
+# hand is supervised present-with-zeros.
+handcrop_datasets: [hi4d, prox, rich]
+# Force supervision mask: listed datasets keep contact/proximity only even
+# though force streams exist (gigahands forces are not trusted).  Datasets
+# without force streams are auto contact-only and need no entry here.
+contact_only_datasets: [gigahands]
+# Tracking-quality curation: episodes whose target object falls outside the
+# picked list are dropped at record build (gigahands).
+object_allowlist_file: core/resources/tactohand/gigahands_tracking_good_objects.allowlist.json
+val_split: all
+val_split_by_dataset:
+  # hocap's official protocol is its test split (every table row since
+  # 2026-09-21 evaluates it there; "all" silently mixed train episodes)
+  hocap_multiview: test
+  dexycb: test
+  arctic: test
+target_fps: 10.0
+train_clip_origin: random_source_frame
+val_clip_origin: random_source_frame
+target_mode: applied
+# Default 256: patch16 -> 16x16 = 256 tokens; 384 -> 24x24 = 576 tokens.
+# Select with IMAGE_SIZE or data.image_size; the backbone follows this value.
+image_size: ${oc.env:IMAGE_SIZE,256}
+# Cached TorchCodec: published CFR full videos skip the decoder's frame scan
+# and use explicit timestamps. Crop/legacy streams retain exact ordinal reads.
+video_backend: torchcodec
+torchcodec_seek_mode: cfr_timestamp
+episode_cache_bytes: 536870912
+# Opt in only for S=1 training; legacy/evaluation readers keep full geometry.
+training_data_fast_path: false
+vertex_force_frame: vertex_local
+uint8_images: true
+deduplicate_batch_frames: true
+batch_size: 7
+num_workers: 12
+prefetch_factor: 12
+pin_memory: true
+persistent_workers: true
+# power 1.0: each dataset participates at raw size x dataset_weights
+# (weight 1.0 = raw share; only explicitly weighted datasets are
+# downsampled). The weight table is the single control surface.
+dataset_sampling: power
+dataset_sampling_power: 1.0
+# Direct per-dataset quota multipliers (1.0 = full quota; missing names
+# default to 1.0).  The rotating per-epoch start still walks each dataset
+# completely over time.
+dataset_weights:
+  dexycb: 2.0            # highest-fidelity GT forces; upsample
+  hoi4d: 0.5
+  oakink-v2: 0.5
+  decaf: 0.1
+  interhand26m: 0.02     # ~12M rows; without the downweight it dominates
+  reinterhand: 0.1
+  hograspnet: 0.05
+  obman: 0.05            # 118k same-frame-stacked rows from 23 synthetic episodes
+  gigahands: 0.05        # curated subset + heavy chunk-video decode
+  mow: 4.0
+# Half-overlap → no-overlap grid (stride = sequence_length = 32).  The
+# per-epoch phase rotation shifts the grid, so each epoch covers
+# [phase, run_end) of every run — anchoring the run head ([0, phase)) is
+# deliberately deferred.  Short runs (< sequence_length) are always covered
+# whole; tail windows only exist when the phase leaves frames uncovered
+# (no redundant 1-frame tails).
+window_stride: 32
+# Shorter epochs, mixture ratios untouched: every dataset's per-epoch quota
+# scales by this fraction and the rotating start walks fresh slices, so a
+# few consecutive epochs cover the full data (unbiased).  Adjust
+# training.max_epochs by 1/fraction to keep the total budget.  Validation
+# stays full-size for cross-run comparability.
+epoch_window_fraction: 0.2

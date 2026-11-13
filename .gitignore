@@ -1,0 +1,119 @@
+# Python cache / build artifacts
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyright/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / editor
+.vscode/
+.idea/
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+logs/
+log_force/
+refine-logs/
+profiler_logs/
+tmp/
+.cleanup_quarantine/
+*.log
+
+# Local datasets and generated outputs
+/data
+raw_data/
+contact_vis/
+converted_dataset/
+visualizations/
+figures/
+hot3d_mesh_repair_vis/
+hot3d_vis/
+hot3d_vis_samples/
+scripts/downloads/
+mano_v1_2/
+mano/
+!scripts/dataset_maintenance/mano/
+!scripts/dataset_maintenance/mano/*.py
+manotorch/
+
+# Model and checkpoint artifacts
+artifacts/tactohand/*.parquet
+artifacts/tactohand/*.json
+artifacts/tactohand/runtime_v2/
+checkpoints/
+outputs/
+wandb/
+runs/
+
+# Coding CLI md files
+# AGENTS.md
+# CLAUDE.md
+
+# others
+.env
+.env.wandb
+*.env
+.env.*
+!*.env.example
+!.env.example
+being_key
+cookie
+hoi_dataset
+paper/
+githubtoken
+zellij
+metrics.txt
+time.md
+
+# ARIS research tool local state and its auto-generated manifest index
+.aris/
+MANIFEST.md
+.zcode/
+
+# Separately provisioned third-party repositories; see third_party/README.md.
+/third_party/ContactPrompt_RELEASE/
+/third_party/EgoPHI/
+
+# Large local model/data/output trees (kept on disk, not tracked)
+models/
+converted_data/
+profile_output/
+test_videos/
+artifacts/tactohand/*.npz
+
+# Local model archives (SMPLX/MANO downloads; license-restricted, re-downloadable)
+/assets/**
+!/assets/**/
+!/assets/**/README.md
+!/assets/README.md
+!/assets/manifest.json
+!/assets/mano/corrected/provenance/*.json
+
+# Local Overleaf credential
+/overleaf.key
+
+# Local working outputs; versioned training resources live in core/resources/.
+/artifacts/*
+!/artifacts/README.md
+/prediction_outputs/
+/temp_data/
+/test_results/
+/egocentric_data

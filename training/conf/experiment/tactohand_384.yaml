@@ -1,0 +1,45 @@
+# @package _global_
+defaults:
+  - tactohand
+  - _self_
+
+# Public counterpart of a800_1node_8gpu_bs3_384_train.sh.
+# A supplied RESUME_FROM is loaded weights-only; optimizer/scheduler restart.
+resume_from: ${oc.env:RESUME_FROM,null}
+resume_weights_only: true
+resume_exclude_key_prefixes: []
+
+data:
+  image_size: 384
+  batch_size: 3
+  point_force_scale_source: rows_rms
+  training_data_fast_path: true
+  num_workers: 8
+  prefetch_factor: 2
+  torchcodec_num_ffmpeg_threads: 1
+  torchcodec_seek_mode: cfr_timestamp
+
+model:
+  wrench:
+    gradient_checkpointing: false
+
+training:
+  max_epochs: 1000
+  accumulate_grad_batches: 60
+  precision: bf16-mixed
+  matmul_precision: high
+  optimizer:
+    lr: 1.0e-5
+    backbone_lr: 1.0e-5
+  scheduler:
+    name: cosine
+    min_lr: 1.0e-6
+    min_lr_ratio: 0.1
+    warmup_steps: 0
+    warmup_epochs: 0
+
+loss:
+  rollout:
+    weight: 1.0e-3
+    start_epoch: 0
+    warmup_epochs: 0

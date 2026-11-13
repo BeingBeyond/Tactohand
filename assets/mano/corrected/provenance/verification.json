@@ -1,0 +1,21 @@
+{
+  "random_frames": 32,
+  "configuration": {
+    "flat_hand_mean": true,
+    "use_pca": false,
+    "center_idx": null
+  },
+  "comparison": "exported PKL vs original PKL plus runtime left fix",
+  "checks": {
+    "left": {
+      "vertices_max_delta_m": 0.0,
+      "joints_max_delta_m": 0.0
+    },
+    "right": {
+      "vertices_max_delta_m": 0.0,
+      "joints_max_delta_m": 0.0
+    }
+  },
+  "source_unchanged": true,
+  "only_left_shapedirs_field_changed": true
+}
