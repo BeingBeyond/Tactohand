@@ -35,7 +35,6 @@ include = [
   "training/conf/data/tactohand.yaml",
   "training/conf/experiment/tactohand.yaml",
   "training/conf/experiment/tactohand_384.yaml",
-  "training/conf/experiment/tactohand_dexycb_vitb.yaml",
   "core/physics/*.py",
 ]
 exclude = [

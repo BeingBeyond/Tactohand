@@ -35,7 +35,7 @@ train = [
 ]
 video = ["torchcodec>=0.10,<0.11"]
 visualization = ["trimesh>=4", "pillow>=10", "matplotlib>=3.8"]
-labels = ["pyarrow>=18", "pandas>=2", "scipy>=1.13", "trimesh>=4", "smplx>=0.1.28"]
+labels = ["pyarrow>=18", "pandas>=2", "scipy>=1.13", "trimesh>=4"]
 dev = ["pyright>=1.1", "wheel"]
 
 [project.scripts]

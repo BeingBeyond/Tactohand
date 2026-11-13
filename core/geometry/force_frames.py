@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from pathlib import Path
-import os
 
 import numpy as np
 import torch
@@ -46,12 +44,8 @@ def _normalize(values: np.ndarray, eps: float = 1e-8) -> np.ndarray:
 def _mano_topology(side: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     from core.geometry.mano_layer import ManoTorchLayer as ManoLayer
 
-    root = Path(os.environ.get(
-        "MANO_ASSETS_ROOT",
-        str(Path(__file__).resolve().parents[2] / "assets" / "mano" / "stock"),
-    ))
     layer = ManoLayer(
-        side=side, mano_assets_root=str(root), use_pca=False,
+        side=side, use_pca=False,
         flat_hand_mean=True, ncomps=45, center_idx=None,
     ).eval()
     return (
@@ -107,12 +101,8 @@ def canonical_vertex_local_axes(side: str) -> tuple[np.ndarray, np.ndarray]:
     """Return stable side-specific axes from the neutral MANO template."""
     from core.geometry.mano_layer import ManoTorchLayer as ManoLayer
 
-    root = Path(os.environ.get(
-        "MANO_ASSETS_ROOT",
-        str(Path(__file__).resolve().parents[2] / "assets" / "mano" / "stock"),
-    ))
     layer = ManoLayer(
-        side=side, mano_assets_root=str(root), use_pca=False,
+        side=side, use_pca=False,
         flat_hand_mean=True, ncomps=45, center_idx=None,
     ).eval()
     with torch.no_grad():

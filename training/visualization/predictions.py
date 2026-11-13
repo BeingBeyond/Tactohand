@@ -728,15 +728,11 @@ class ComparisonRenderer:
         if cached is not None:
             return cached
         from core.geometry.mano_layer import ManoTorchLayer as ManoLayer
-        import os
-        root = Path(os.environ.get(
-            "MANO_ASSETS_ROOT",
-            str(Path(__file__).resolve().parents[2] / "assets" / "mano" / "stock")))
         cached = {}
         with torch.no_grad():
             for side, faces_key in (("left", "left"), ("right", "right")):
                 layer = ManoLayer(
-                    side=side, mano_assets_root=str(root), use_pca=False,
+                    side=side, use_pca=False,
                     flat_hand_mean=True, ncomps=45, center_idx=None).eval()
                 verts = layer(
                     torch.zeros(1, 48), torch.zeros(1, 10)).verts[0]

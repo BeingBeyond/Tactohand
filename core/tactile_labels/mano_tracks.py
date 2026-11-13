@@ -85,8 +85,10 @@ def solver_vertex_tracks(
                 if hmr_cap.get('mesh_topology') != 'mano_778':
                     raise ValueError('Native hand vertices require an explicit supported topology')
                 from core.geometry.mano_layer import create_mano_layer
-                stored['faces'] = {side: create_mano_layer(side=side, basis='corrected',
-                    backend='manotorch').th_faces.cpu().numpy().astype(np.int32) for side in sides}
+                stored['faces'] = {
+                    side: create_mano_layer(side=side).th_faces.cpu().numpy().astype(np.int32)
+                    for side in sides
+                }
             return stored
         if native_vertices:
             raise ValueError(f'{root}: declared native hand vertices could not be read')

@@ -91,7 +91,7 @@ def _mano_layer(side: str, device_string: str, basis: str = "corrected") -> Any:
     """Reuse each immutable left/right MANO module in one batch worker."""
     repository_root = REPO
     assets_root = Path(os.environ.get(
-        "MANO_ASSETS_ROOT", str(repository_root / "assets" / "mano" / "stock")
+        "MANO_ASSETS_ROOT", str(repository_root / "assets" / "mano" / "corrected")
     )).expanduser().resolve()
     for model_side in ("LEFT", "RIGHT"):
         model = assets_root / "models" / f"MANO_{model_side}.pkl"

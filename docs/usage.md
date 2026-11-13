@@ -37,12 +37,12 @@ data and mesh utilities. Label solving also requires a Newton/Warp environment.
 
 Geometry-dependent workflows require manotorch and MANO model files. Install
 manotorch from its source checkout with
-`python -m pip install -e /path/to/manotorch`. Obtain the MANO files separately
-and choose the stock or corrected basis that matches the source parameters.
-The corrected left model adjusts the x component of `shapedirs`. Both bases
-use the same right model. The [asset manifest](../assets/manifest.json) records
-paths and fingerprints. Verify local files with
-`python tools/checks/check_assets.py`.
+`python -m pip install -e /path/to/manotorch`. Obtain the files from the [MANO project](https://mano.is.tue.mpg.de/)
+under its [license](https://mano.is.tue.mpg.de/license.html), then place `MANO_LEFT.pkl` and `MANO_RIGHT.pkl` in
+`assets/mano/corrected/models/`. The shared loader recognizes the official
+files by fingerprint and applies the left-hand shape-basis correction in
+memory when required. You can also use an existing corrected pair. The
+[asset manifest](../assets/manifest.json) records the expected fingerprints.
 
 | Resource | Setting | Expected input |
 |---|---|---|

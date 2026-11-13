@@ -49,8 +49,8 @@ python -m pip install -e '.[train,video]'
 ```
 
 Geometry-dependent workflows additionally require the `manotorch` backend and
-MANO model files. Set `MANO_ASSETS_ROOT` to a directory containing
-`models/MANO_LEFT.pkl` and `models/MANO_RIGHT.pkl`; see the
+MANO model files. Place the files under `assets/mano/corrected/models/`, or
+set `MANO_ASSETS_ROOT` to another asset root. See the
 [installation guide](docs/usage.md#installation).
 RGB-only inference does not need the datasets or MANO geometry.
 

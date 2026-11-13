@@ -1,7 +1,7 @@
 """One MANO loading boundary; basis changes never convert stored parameters.
 
 Canonical fitting/consumption uses corrected, full axis angle, a flat mean,
-no centering, and meters (manopth alone returns millimeters). Native dataset
+no centering, and meters. Native dataset
 adapters must name their source basis explicitly. No caller should mutate
 shapedirs after loading. Only fingerprinted stock/corrected assets are accepted.
 """
@@ -84,14 +84,14 @@ def asset_directory(root: Path) -> tuple[Path, str]:
                                   b.st_size, b.st_mtime_ns)
 
 
-def create_mano_layer(*, backend: str = "manotorch", basis: str = "corrected",
+def create_mano_layer(*, basis: str = "corrected",
                       assets_root: Path | str | None = None, side: str = "right",
                       **kwargs):
     """Load a fresh module, normalizing the verified PKL to the requested basis.
 
     Passing stock files with basis=corrected flips once; passing corrected files
     with the same request does not flip. Reverse decoding for audits is explicit.
-    The native backend API/output units remain intact.
+    Returns a manotorch layer with vertices in meters.
     """
     if basis not in {"stock", "corrected"}:
         raise ValueError("basis must be explicitly stock or corrected")
@@ -105,57 +105,26 @@ def create_mano_layer(*, backend: str = "manotorch", basis: str = "corrected",
     _compat()
     kwargs.setdefault("use_pca", False)
     kwargs.setdefault("flat_hand_mean", True)
-    if backend == "smplx":
-        from smplx import MANO
-        side = "right" if kwargs.pop("is_rhand", side == "right") else "left"
-        layer = MANO(model_path=str(directory), is_rhand=side == "right", **kwargs)
-        shapedirs = layer.shapedirs
-    else:
-        kwargs.setdefault("center_idx", None)
-        if backend == "manotorch":
-            from manotorch.manolayer import ManoLayer
-            # manotorch requires <assets>/models; manopth takes the models directory.
-            if directory.name != "models":
-                raise ValueError("manotorch requires an asset root with models/MANO_*.pkl")
-            layer = ManoLayer(side=side, mano_assets_root=str(directory.parent), **kwargs)
-        elif backend == "manopth":
-            from manopth.manolayer import ManoLayer
-            layer = ManoLayer(side=side, mano_root=str(directory), **kwargs)
-        else:
-            raise ValueError(f"Unknown MANO backend: {backend}")
-        shapedirs = layer.th_shapedirs
+    kwargs.setdefault("center_idx", None)
+    if directory.name != "models":
+        raise ValueError("MANO requires an asset root with models/MANO_*.pkl")
     if side not in {"left", "right"}:
         raise ValueError("side must be left or right")
+
+    from manotorch.manolayer import ManoLayer
+
+    layer = ManoLayer(side=side, mano_assets_root=str(directory.parent), **kwargs)
     if side == "left" and stored_basis != basis:
         import torch
         with torch.no_grad():
-            shapedirs[:, 0, :].mul_(-1)
+            layer.th_shapedirs[:, 0, :].mul_(-1)
     layer.mano_basis = basis
-    layer.mano_backend = backend
+    layer.mano_backend = "manotorch"
     return layer
 
 
 def ManoTorchLayer(**kwargs):
-    return create_mano_layer(backend="manotorch", **kwargs)
-
-
-def ManoPthLayer(**kwargs):
-    return create_mano_layer(backend="manopth", **kwargs)
-
-
-def NativeManoTorchLayer(**kwargs):
-    kwargs.setdefault("basis", "stock")
-    return create_mano_layer(backend="manotorch", **kwargs)
-
-
-def NativeManoPthLayer(**kwargs):
-    kwargs.setdefault("basis", "stock")
-    return create_mano_layer(backend="manopth", **kwargs)
-
-
-def NativeSMPLXMANO(**kwargs):
-    kwargs.setdefault("basis", "stock")
-    return create_mano_layer(backend="smplx", **kwargs)
+    return create_mano_layer(**kwargs)
 
 
 def contract_from_info(info: dict) -> dict | None:
