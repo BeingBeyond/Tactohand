@@ -1,7 +1,7 @@
 """Shared writer for handcrop v1 segments — the single place that owns the
 storage contract, so producers cannot re-derive (and mis-derive) it.
 
-Contract owned here (see AGENTS.md "Handcrop v1 契约与消费者路径验证"):
+Handcrop v1 writer contract:
 
 * the crop video and crop_data rows are indexed by VIDEO FRAME
   (``frame_index`` == 0..n_video-1); geometry for frame k is the solver

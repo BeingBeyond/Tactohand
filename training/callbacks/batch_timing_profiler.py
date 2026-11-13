@@ -48,7 +48,7 @@ class BatchTimingProfilerCallback(pl.Callback):
 
         self._window_size = max(5, int(window_size))
         self._stage_windows: Dict[str, Deque[float]] = {}
-        self._batch_start_time: float = 0.0  # 独立记录 batch 开始时间
+        self._batch_start_time: float = 0.0
         self._last_batch_end_time: float | None = None
         self._step_count = 0
         self._last_gap_s = 0.0
@@ -70,7 +70,7 @@ class BatchTimingProfilerCallback(pl.Callback):
     ) -> None:
         del pl_module, batch, batch_idx
         now = time.perf_counter()
-        self._batch_start_time = now  # 独立记录 batch 开始时间
+        self._batch_start_time = now
         if self._last_batch_end_time is None:
             self._last_gap_s = 0.0
         else:
@@ -88,7 +88,7 @@ class BatchTimingProfilerCallback(pl.Callback):
         del outputs, batch, batch_idx
         now = time.perf_counter()
 
-        # 独立计算 batch_total_s，不依赖 Model 的 timing
+        # Measure total batch time independently of the model.
         batch_total_s = max(0.0, now - self._batch_start_time)
         self._record("batch_total_s", batch_total_s)
 
@@ -99,7 +99,7 @@ class BatchTimingProfilerCallback(pl.Callback):
             stats = pl_module.get_latest_timing_stats()  # type: ignore[attr-defined]
         else:
             stats = {}
-        # 不再从 Model 获取 batch_total_s，其他阶段仍然从 Model 获取
+        # The model reports the individual stage durations.
         for key in (
             "transfer_s", "forward_loss_s", "backbone_forward_s",
             "temporal_forward_loss_s", "backward_s", "optimizer_step_s",
