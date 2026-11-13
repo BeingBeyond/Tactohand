@@ -9,8 +9,9 @@ Haiweng Xu · Hao Luo · Chuan Mao · Zongqing Lu
 
 [![arXiv](https://img.shields.io/badge/arXiv-2610.39585-b31b1b.svg)](https://arxiv.org/abs/2610.39585)
 [![Status](https://img.shields.io/badge/Code-Coming%20Soon-orange.svg)](#release-plan)
+[![Project Website](https://img.shields.io/badge/Project-Website-0072B2.svg)](https://zhenqis123.github.io/tactohand-site/)
 
-[Paper](https://arxiv.org/abs/2610.39585) · [PDF](https://arxiv.org/pdf/2610.39585) · [Project Website](https://zhenqis123.github.io/tactohand-site/) · [Release Plan](#release-plan) · [Citation](#citation)
+[Release Plan](#release-plan) · [Citation](#citation)
 
 </div>
 
