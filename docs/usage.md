@@ -234,6 +234,11 @@ reports force MAE in newtons. For paper results, use the fields below.
 | Vertex / active force MAE | `force/point_mae_n` / `force/active_mae_n` | Multiply by 1000 for mN |
 | Force angle | `force/angle_deg` | Degrees |
 
+For contact, threshold probabilities at 0.5. Macro-F1 averages over
+frame–hand pairs with contact in the prediction or reference. Micro-F1 pools
+vertex decisions. Read rollout errors alongside valid counts and divergence
+rates.
+
 Use the paper's split, view, input, checkpoint, and metric protocol. The
 reported MOW proximity and contact values use single-frame and temporal
 variants, respectively.

@@ -41,6 +41,34 @@ HMR, camera, and handcrop streams have separate indices.
   `signed_distance`, independently of Parquet sharding. `force_sha1` covers
   the declared force, state, and auxiliary physics fields.
 
+## Reading an episode
+
+Use the shared readers instead of assuming physical parquet/video filenames.
+For example, read contact and proximity labels from one DexYCB episode:
+
+```python
+from pathlib import Path
+from core.tactile_labels.decode import load_label_index, read_episode_columns
+
+root = Path("/path/to/processed/dexycb_lerobot")
+episode = load_label_index(root, episode_indices=[0])[0]
+labels = read_episode_columns(
+    root, episode["tactile_groups"],
+    ["source_position", "flags", "contact", "signed_distance"],
+)
+contact = labels["contact"].reshape(-1, 2, 778)
+distance_m = labels["signed_distance"].reshape(-1, 2, 778)
+```
+
+Use `source_position` and the declared frame mappings to align label rows with
+video. Apply the hand-presence and supervision-validity flags before computing
+metrics. Compare predicted proximity with the target defined from the signed
+reference distance. Contact-only datasets do not provide valid force targets.
+
+For RGB/geometry access, use `core.data.processed_index.ProcessedIndex` and the
+shared readers. For model inputs, use `training.data` so sampling, handcrop
+intrinsics and force-supervision gates match training.
+
 ## Training and evaluation
 
 Training selects clip origins from decodable source frames. Per-dataset
@@ -231,9 +259,6 @@ raw RGB. The shared crop canvas resolver returns a unit canvas for v2.
 Migration must preserve masks, frame ordering, all non-geometry index columns,
 intrinsic float64 values and the previous physical crop transform. It validates
 all rewritten row groups and the actual shared consumer before/after install.
-Old geometry trees, including unindexed historical payloads, are archived for
-rollback. Existing MP4s, camera/HMR data and tactile/contact labels are not
-rewritten by this storage migration.
 
 ### Handcrop geometry v3: derive crop intrinsics (2026-10-20)
 
@@ -268,8 +293,7 @@ and `assets/`. The metadata root contains `info.json`, `provenance.json`,
 `stats.parquet`, `tables/`, and `index/`. `info.json.manifest` points to the
 integer index manifest; caches pin its revision. Supplemental model and
 visualization outputs are preserved as registered assets without changing
-their internal format. Full original trees remain outside `_processed` for
-rollback; source symlinks are materialized into the published tree.
+their internal format. The published tree contains materialized files.
 
 The three index families are episodes, frames, and per-modality data_ranges.
 Each range has `episode, stream, start, count, path, offset`; bounds are
@@ -295,13 +319,6 @@ force-valid tokens enter force runs; contact fallback runs exclude those tokens.
 Targets with object index -1 have no target run. Compatibility reconstruction
 must preserve the complete original training-run partition. Object identity
 continues to join instance to asset to geometry, never by numeric label alone.
-
-The migration checks range bounds, source identity, video header counts,
-real consumer reads, all label training-run partitions, and split intervals
-before publication. Header checks do not imply full video decoding or GPU
-training validation. Publication uses journaled NFS renames and retains the
-entire previous dataset; old single-info rollback tools cannot roll this back.
-
 
 Optional source sidecars whose entire payload tree is absent may be explicitly
 disabled before migration, retaining original metadata in the external repair

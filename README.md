@@ -27,14 +27,6 @@ sequences.
 
 ## Getting started
 
-| Workflow | Entry point | Current support |
-|---|---|---|
-| [Training](#training) | `tactohand-train` | 256px inputs; requires prepared data, backbone weights and MANO |
-| [Your own video](#inference-on-your-video) | `tactohand-infer` | RGB clip → numerical interaction fields; physical force decoding needs extra geometry and scale |
-| [Model evaluation](#evaluation) | `tactohand-eval` | TactoHand on labeled datasets → metrics and JSON reports |
-| [Visualization](#visualization) | `tactohand-view` | Browse prediction runs with synchronized video and per-vertex fields |
-| [Dataset usage](#dataset-usage) | Shared manifest and label readers | Episode-level labels, video/geometry access and training batches |
-
 ### Installation
 
 Use Python 3.11, PyTorch 2.10 and torchvision 0.25 with a matching CUDA build.
@@ -61,10 +53,7 @@ TactoHand-256 uses DINOv3 ViT-L and predicts both hands from windows of
 frames and samples the frames within each clip at 10 Hz. Pretrained
 checkpoints and prepared datasets are planned for a separate release.
 
-Use a **complete saved configuration matching the checkpoint**
-as `model.yaml`. A Hydra experiment fragment or a newly exported default config
-cannot substitute for the run's actual settings. Inference reconstructs the
-network from the checkpoint without downloading backbone initialization weights.
+Pair each checkpoint with its [saved configuration](docs/usage.md#model-resources).
 
 ## Training
 
@@ -113,30 +102,13 @@ frame to the configured input size. In this example, 32 samples at 10 Hz span
 the clip options to process overlapping windows across the full video. Use
 `--device cpu` for CPU inference.
 
-Outputs share the requested filename stem:
-
-| File / field | Contents |
-|---|---|
-| `.npz`: `contact_prob` | Contact probability, `[B,T,2,778]` |
-| `.npz`: `proximity_prob`, `distance_m` | Proximity and decoded distance in metres, `[B,T,2,778]` |
-| `.npz`: `force_normalized_10hz` | Normalized force vectors, `[B,T,2,778,3]` |
-| `.npz`: `source_frame_indices` | Selected source-video frame indices |
-| `.npz`: `target_times_s` | Requested sample times in the source video, in seconds |
-| `.json` | Field shapes, units, configuration and decoding metadata |
-| `.done` | Successful completion marker |
-
-The hand axis lists the left hand first and the right hand second. Use a new
-output stem for each run. To pass a tensor instead of a video, use `--input`.
-
-RGB inference returns normalized force vectors. To recover camera-frame forces
-in newtons, provide the training normalization scale and, for local-frame
-force heads, time-aligned per-vertex axes in `--geometry geometry.npz`.
-See [input and force decoding](docs/usage.md#prediction).
+Each run writes predictions, JSON metadata, and a completion marker. See the
+[output fields and force decoding guide](docs/usage.md#prediction) for shapes,
+units, tensor inputs, and camera-frame forces.
 
 ## Evaluation
 
-Evaluate **TactoHand** against the prepared reference labels. The default
-predictor is our model; external baseline reproduction is separate.
+Evaluate a checkpoint against prepared reference labels:
 
 ```bash
 tactohand-eval --config model.yaml --ckpt model.ckpt \
@@ -146,13 +118,9 @@ tactohand-eval --config model.yaml --ckpt model.ckpt \
   --device cuda:0 --output outputs/evaluation
 ```
 
-This evaluates the selected split. For an initial execution check, add
-`--limit-batches 1`; omit it for reported results. Reports are written under
-`outputs/evaluation/<timestamp>/tactohand/*.json`, including checkpoint identity,
-configuration, sample counts, per-dataset metrics and paper-table fields.
-For paper comparisons, use the explicit keys and units in `per_dataset`:
-the current `paper.tables` acceleration mapping needs correction, and force
-MAEs require N-to-mN conversion. See the [metric mapping](docs/usage.md#metric-mapping).
+Add `--limit-batches 1` for a smoke test. Reports appear under
+`outputs/evaluation/<timestamp>/tactohand/`. Use the
+[metric mapping](docs/usage.md#metric-mapping) for paper results.
 
 Use the paper's dataset and input protocol explicitly:
 
@@ -163,70 +131,20 @@ Use the paper's dataset and input protocol explicitly:
 | ARCTIC P2 | `--datasets arctic --split-by-dataset arctic=test --views ego_view --subject-filter s05` | `--input-source full` |
 | MOW | `--datasets mow --split-by-dataset mow=test` | `--input-source handcrop`; temporal input repeats the static image |
 
-For contact/proximity comparisons, select `--metrics contact proximity`.
-The paper reports Macro-F1 over frame–hand pairs with contact in the prediction
-or reference, pooled Micro-F1, distance ADE/ADE-100 in mm, and distance-error
-acceleration for video. TactoHand contact probabilities are thresholded at 0.5.
-The paper uses separate SF/T variants for MOW proximity
-and contact; one current temporal checkpoint does not reproduce both columns.
-
-For the force/physics experiment on DexYCB, select `--metrics force rollout`.
-Force metrics use valid reference samples aligned with the input images. The
-0.4-second rollout (`h4`) starts from the observed state and uses reference
-forces between predicted force samples. Read the errors alongside valid counts
-and divergence rates. Run `tactohand-eval --list-metrics` for metric names and
-units.
-
-Force decoding uses the training mixture's normalization statistics. Select the
-evaluation dataset with `--datasets` and keep `data.datasets` in the saved
-configuration so the training force scale is preserved. See
-[evaluation details](docs/usage.md#prediction) and the paper's evaluation appendix.
+Use `--metrics contact proximity` for surface fields and
+`--metrics force rollout` for the DexYCB physics evaluation. The 0.4-second
+rollout starts from the observed state and uses reference forces between
+predicted force samples.
 
 ## Visualization
-
-### Dataset visualization
-
-The dataset reviewer displays RGB frames, hand and object meshes, and contact,
-proximity, and force labels when it can read the dataset layout.
-
-The current `scripts/visualization/visualize_training_batches.py` still reaches
-a legacy `meta/observations.parquet` read and fails on the installed manifest-based
-dataset layout. Its dataset index integration needs updating before it can serve
-as the public dataset viewer. See [visualization status](docs/usage.md#visualization)
-for the existing entry points and the remaining work.
-
-### Prediction viewer
-
-Start the viewer from the repository root and open the address printed in the
-terminal.
 
 ```bash
 tactohand-view
 ```
 
-Choose a checkpoint and a local video in the page, then click **Predict**. The
-viewer looks for checkpoint/YAML pairs in `checkpoints/`, selects
-`tactohand.ckpt` by default when present, and saves each completed video run
-in `prediction_outputs/`. A checkpoint such as `model.ckpt` needs its matching
-composed `model.yaml`. Video prediction requires FFmpeg (including ffprobe),
-and uses CUDA when available. To browse existing runs, each run directory
-needs a prediction NPZ and its same-stem JSON.
-
-Playback and frame selection stay synchronized with the left and right hand
-fields. The viewer uses the project demo's binary contact colors (probability
-> 0.5), logarithmic distance scale and force magnitude palette.
-The viewer uses `assets/mano/corrected` by default for rotatable rest-pose
-meshes when MANO assets and the manotorch backend are installed. Use
-`--no-mano` to display vertex-index grids.
-For predictions in vertex-local coordinates, enable **3D force vectors** to
-inspect normalized directions on the rest-pose mesh alongside any surface field.
-The viewer reads the source clip from the JSON's `input` path. For HEVC or
-another unsupported codec, make a browser-compatible copy and set
-`preview_video` in that JSON. Relative video paths are resolved from the run directory.
-
-`--visualize N` on the evaluation command compares predictions with dataset
-reference labels. It requires dataset geometry and shares the dataset viewer's
-index-format limitation.
+Open the printed URL to predict from a local video or browse a completed
+run. See the [viewer guide](docs/usage.md#visualization) for checkpoint
+locations, playback, and 3D forces.
 
 ## Dataset usage
 
@@ -241,44 +159,8 @@ processed/
   ...
 ```
 
-Use the shared readers instead of assuming physical parquet/video filenames.
-For example, read contact and proximity labels from one DexYCB episode:
-
-```python
-from pathlib import Path
-from core.tactile_labels.decode import load_label_index, read_episode_columns
-
-root = Path("/path/to/processed/dexycb_lerobot")
-episode = load_label_index(root, episode_indices=[0])[0]
-labels = read_episode_columns(
-    root, episode["tactile_groups"],
-    ["source_position", "flags", "contact", "signed_distance"],
-)
-contact = labels["contact"].reshape(-1, 2, 778)
-distance_m = labels["signed_distance"].reshape(-1, 2, 778)
-```
-
-Use `source_position` and the declared frame mappings to align label rows with
-video. Apply the hand-presence and supervision-validity flags before computing
-metrics. Compare predicted proximity with the target defined from the signed
-reference distance. Contact-only datasets do not provide valid force targets.
-
-For RGB/geometry access, use `core.data.processed_index.ProcessedIndex` and the
-shared readers. For model inputs, use `training.data` so sampling, handcrop
-intrinsics and force-supervision gates match training.
-See the [label schema](docs/labels_v5.md) and [dataset conventions](docs/datasets.md).
-
-## Code organization
-
-| Path | Responsibility |
-|---|---|
-| `training/tactohand_wrench/` | TactoHand network, losses and model-specific runtime |
-| `training/data/`, `training/evaluation/`, `training/visualization/` | Learning data, evaluation protocols and model-result display |
-| `core/` | Shared dataset, IO, geometry, physics and label readers |
-| `scripts/` | Training, evaluation, data review and other operational entry points |
-| `tools/` | Developer checks, packaging and workspace maintenance |
-
-[Usage guide](docs/usage.md) · [Datasets](docs/datasets.md) · [Label format](docs/labels_v5.md)
+See the [label format and Python example](docs/labels_v5.md#reading-an-episode)
+and [dataset conventions](docs/datasets.md).
 
 ## Release Plan
 
