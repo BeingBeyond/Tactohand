@@ -26,6 +26,10 @@ temporal attention and learns from geometry, motion and differentiable physics.
 
 ## Quick start
 
+Try the [online demo on Hugging Face](https://huggingface.co/spaces/zhenqis123/TactoHand):
+upload a video to run inference and explore synchronized hand-mesh predictions,
+with no local installation. To run inference locally, follow the steps below.
+
 Use Python 3.11 with matching PyTorch 2.10 and torchvision 0.25 builds.
 Install FFmpeg and ffprobe for video inference, then install from the checkout:
 

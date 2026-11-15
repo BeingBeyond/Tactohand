@@ -25,6 +25,10 @@ TactoHand 从单目 RGB 视频预测双手各 778 个 MANO 顶点的接触、距
 
 ## 快速开始
 
+可直接使用 [Hugging Face 在线演示](https://huggingface.co/spaces/zhenqis123/TactoHand)：
+上传视频即可运行推理，联动查看视频与手部网格上的预测结果，无需本地安装。
+如需在本地运行，请按以下步骤操作。
+
 使用 Python 3.11、匹配的 PyTorch 2.10 和 torchvision 0.25。
 视频推理还需要 FFmpeg、ffprobe。在源码目录安装：
 
