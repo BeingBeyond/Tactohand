@@ -45,7 +45,7 @@ python -m pip install -e ./manotorch
 
 在浏览器中上传视频，即可查看预测的接触、距离和力，以及每只手上方的可见性。
 
-可直接使用[在线 Demo](https://huggingface.co/spaces/zhenqis123/TactoHand)，上传不超过 10 秒、100 MB 的视频，
+可直接使用[在线 Demo](https://huggingface.co/spaces/zhenqis123/TactoHand)，上传不超过 30 秒、100 MB 的视频，
 查看双手可见性并下载预测结果；免费 GPU 请求可能需要排队。也可按下面的步骤在本地运行。
 
 ### 启动看板

@@ -49,7 +49,7 @@ use their matching basis: changing the model files does not convert those parame
 Open a video in your browser to explore predicted contact, distance and force,
 with visibility shown above each hand.
 
-Try the [online demo](https://huggingface.co/spaces/zhenqis123/TactoHand) with videos up to 10 seconds and 100 MB,
+Try the [online demo](https://huggingface.co/spaces/zhenqis123/TactoHand) with videos up to 30 seconds and 100 MB,
 or follow the steps below to run locally. The demo includes predicted hand
 visibility and downloadable results; GPU requests may queue.
 
