@@ -12,7 +12,8 @@ Haiweng Xu · Hao Luo · Chuan Mao · Zongqing Lu
 [![arXiv](https://img.shields.io/badge/arXiv-2610.39585-b31b1b.svg)](https://arxiv.org/abs/2610.39585)
 [![Code](https://img.shields.io/badge/Code-Available-brightgreen.svg)](https://github.com/BeingBeyond/Tactohand)
 [![Project Website](https://img.shields.io/badge/Project-Website-0072B2.svg)](https://zhenqis123.github.io/tactohand-site/)
-[![Data & checkpoints](https://img.shields.io/badge/Data%20%26%20checkpoints-Release%20plan-orange.svg)](#release-plan)
+[![Checkpoints](https://img.shields.io/badge/Checkpoints-Available-brightgreen.svg)](https://pan.baidu.com/s/1iG-hTmECh_FrkJKIgWdSiQ?pwd=898f)
+[![Data](https://img.shields.io/badge/Data-Coming%20soon-orange.svg)](#release-plan)
 
 [发布计划](#release-plan) · [引用](#citation)
 
@@ -60,7 +61,7 @@ tactohand-view
 
 - [x] 发布项目网站。
 - [x] 发布源代码。
-- [ ] 发布预训练权重（[下载入口](docs/usage.zh-CN.md#预测看板)）。
+- [x] 发布预训练权重（[下载入口](docs/usage.zh-CN.md#预测看板)）。
 - [ ] 发布数据集。
 
 ## 许可证
