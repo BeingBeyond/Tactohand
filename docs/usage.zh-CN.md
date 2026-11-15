@@ -32,10 +32,14 @@ git clone https://github.com/lixiny/manotorch.git
 python -m pip install -e ./manotorch
 ```
 
-本地 MANO 目录为
-`assets/mano/stock` 和 `assets/mano/corrected`。基底须匹配已保存参数；共享入口
-只应用一次必要修正。未经参数转换验证，不应直接更换基底。
-指纹与来源记录保留在 `assets/manifest.json` 和 `assets/mano/corrected/provenance/`。
+本项目使用的原始 MANO 文件存在已知的
+[左手形状基底问题](https://github.com/vchoutas/smplx/issues/48)：
+左手形状基底 `shapedirs` 的 x 分量未做镜像，导致相同形状参数可能生成不一致的双手手型。
+我们将该分量取反，使双手的形状变化保持一致。
+
+`assets/mano/stock` 保存原始文件，`assets/mano/corrected` 保存修正后的文件。
+加载器根据文件指纹判断是否需要修正，避免重复处理，无需手动修改 PKL。
+已有拟合参数仍须使用与其匹配的基底；更换模型文件不会自动转换这些参数。
 
 ## 预测看板
 

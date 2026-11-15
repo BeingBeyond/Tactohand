@@ -33,11 +33,16 @@ git clone https://github.com/lixiny/manotorch.git
 python -m pip install -e ./manotorch
 ```
 
-Local MANO roots are
-`assets/mano/stock` and `assets/mano/corrected`. Select the basis matching saved
-parameters; the shared loader applies required correction once. Do not swap a
-model basis without a verified parameter conversion. Asset fingerprints and
-provenance remain in `assets/manifest.json` and `assets/mano/corrected/provenance/`.
+The original MANO files used here have a known
+[left-hand shape-basis issue](https://github.com/vchoutas/smplx/issues/48): the
+x component of the left-hand shape blend shapes (`shapedirs`) is not mirrored,
+so identical shape parameters can produce inconsistent left and right hand shapes.
+We flip this component to preserve consistent hand shape across both hands.
+
+`assets/mano/stock` holds the original files; `assets/mano/corrected` holds the
+corrected files. The loader uses file fingerprints to apply the correction only
+when needed; no manual PKL editing is required. Existing fitted parameters must
+use their matching basis: changing the model files does not convert those parameters.
 
 ## Prediction viewer
 
