@@ -51,8 +51,11 @@ with visibility shown above each hand.
 
 ### Start the viewer
 
-Download `tactohand.ckpt` and its matching `tactohand.yaml` from
-[Baidu Netdisk](https://pan.baidu.com/s/1iG-hTmECh_FrkJKIgWdSiQ?pwd=898f) (access code: `898f`; no expiry).
+Download `tactohand.ckpt` and its matching `tactohand.yaml` from either source:
+
+- [Hugging Face](https://huggingface.co/zhenqis123/TactoHand/tree/main)
+- [Baidu Netdisk](https://pan.baidu.com/s/1iG-hTmECh_FrkJKIgWdSiQ?pwd=898f) (access code: `898f`; no expiry)
+
 Place both files in `checkpoints/`, then start the viewer:
 
 ```bash

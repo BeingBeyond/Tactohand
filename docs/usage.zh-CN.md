@@ -47,9 +47,12 @@ python -m pip install -e ./manotorch
 
 ### 启动看板
 
-从[百度网盘](https://pan.baidu.com/s/1iG-hTmECh_FrkJKIgWdSiQ?pwd=898f)下载 `tactohand.ckpt`
-及配套的 `tactohand.yaml`（提取码：`898f`，永久有效）。将两个文件放入
-`checkpoints/` 目录，然后启动看板：
+从以下任一位置下载 `tactohand.ckpt` 及配套的 `tactohand.yaml`：
+
+- [Hugging Face](https://huggingface.co/zhenqis123/TactoHand/tree/main)
+- [百度网盘](https://pan.baidu.com/s/1iG-hTmECh_FrkJKIgWdSiQ?pwd=898f)（提取码：`898f`，永久有效）
+
+将两个文件放入 `checkpoints/` 目录，然后启动看板：
 
 ```bash
 mkdir -p checkpoints

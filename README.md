@@ -12,7 +12,7 @@ Haiweng Xu · Hao Luo · Chuan Mao · Zongqing Lu
 [![arXiv](https://img.shields.io/badge/arXiv-2610.39585-b31b1b.svg)](https://arxiv.org/abs/2610.39585)
 [![Code](https://img.shields.io/badge/Code-Available-brightgreen.svg)](https://github.com/BeingBeyond/Tactohand)
 [![Project Website](https://img.shields.io/badge/Project-Website-0072B2.svg)](https://zhenqis123.github.io/tactohand-site/)
-[![Checkpoints](https://img.shields.io/badge/Checkpoints-Available-brightgreen.svg)](https://pan.baidu.com/s/1iG-hTmECh_FrkJKIgWdSiQ?pwd=898f)
+[![Checkpoints](https://img.shields.io/badge/Checkpoints-Available-brightgreen.svg)](docs/usage.md#prediction-viewer)
 [![Data](https://img.shields.io/badge/Data-Coming%20soon-orange.svg)](#release-plan)
 
 [Release Plan](#release-plan) · [Citation](#citation)
