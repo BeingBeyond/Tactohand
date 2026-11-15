@@ -24,8 +24,15 @@ PyTorch、CUDA、FFmpeg 匹配；`data.video_backend=cv2` 可选择 OpenCV。
 | 骨干初始化 | `PRETRAINED_PATH` 或 `model.wrench.pretrained_path`，指向匹配骨干的本地权重 |
 | MANO 模型 | `MANO_ASSETS_ROOT`，目录内含 `models/MANO_LEFT.pkl` 和 `models/MANO_RIGHT.pkl` |
 
-几何相关工作流还需安装兼容的 manotorch，例如
-`python -m pip install -e /path/to/manotorch`。本地 MANO 目录为
+几何相关工作流还需从原仓库安装
+[manotorch](https://github.com/lixiny/manotorch)：
+
+```bash
+git clone https://github.com/lixiny/manotorch.git
+python -m pip install -e ./manotorch
+```
+
+本地 MANO 目录为
 `assets/mano/stock` 和 `assets/mano/corrected`。基底须匹配已保存参数；共享入口
 只应用一次必要修正。未经参数转换验证，不应直接更换基底。
 指纹与来源记录保留在 `assets/manifest.json` 和 `assets/mano/corrected/provenance/`。

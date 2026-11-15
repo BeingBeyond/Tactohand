@@ -25,8 +25,15 @@ environment; the `labels` extra supplies only data and mesh utilities.
 | Backbone initialization | `PRETRAINED_PATH` or `model.wrench.pretrained_path`: local weights matching the backbone |
 | MANO models | `MANO_ASSETS_ROOT`: directory containing `models/MANO_LEFT.pkl` and `models/MANO_RIGHT.pkl` |
 
-Install compatible manotorch separately for geometry-dependent workflows, for
-example `python -m pip install -e /path/to/manotorch`. Local MANO roots are
+For geometry-dependent workflows, install
+[manotorch](https://github.com/lixiny/manotorch) from its upstream repository:
+
+```bash
+git clone https://github.com/lixiny/manotorch.git
+python -m pip install -e ./manotorch
+```
+
+Local MANO roots are
 `assets/mano/stock` and `assets/mano/corrected`. Select the basis matching saved
 parameters; the shared loader applies required correction once. Do not swap a
 model basis without a verified parameter conversion. Asset fingerprints and
