@@ -50,8 +50,9 @@ Open a video in your browser to explore predicted contact, distance and force,
 with visibility shown above each hand.
 
 Try the [online demo](https://huggingface.co/spaces/zhenqis123/TactoHand) with videos up to 30 seconds and 100 MB,
-or follow the steps below to run locally. The demo includes predicted hand
-visibility and downloadable results; GPU requests may queue.
+or follow the steps below to run locally. The demo places video beside interactive
+hand meshes, with synchronized playback, per-hand visibility and downloadable
+results. Drag the meshes to rotate them; GPU requests may queue.
 
 ### Start the viewer
 
