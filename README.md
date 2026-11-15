@@ -44,10 +44,13 @@ assets, see [setup](docs/usage.md#setup).
 ```bash
 mkdir -p prediction_outputs/demo
 tactohand-infer --config model.yaml --ckpt model.ckpt \
-  --video input.mp4 --full-video \
+  --video examples/videos/arctic-box.mp4 --full-video \
   --output prediction_outputs/demo/predictions.npz
 tactohand-view
 ```
+
+The repository includes [eight example videos](examples/README.md) from ARCTIC,
+HOT3D, HOI4D and DexYCB, ready to use after cloning.
 
 Open the printed address to inspect predictions or upload another video. The
 viewer shows contact, distance, force magnitude and predicted hand visibility.

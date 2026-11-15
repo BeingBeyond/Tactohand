@@ -42,10 +42,13 @@ python -m pip install '.[inference]'
 ```bash
 mkdir -p prediction_outputs/demo
 tactohand-infer --config model.yaml --ckpt model.ckpt \
-  --video input.mp4 --full-video \
+  --video examples/videos/arctic-box.mp4 --full-video \
   --output prediction_outputs/demo/predictions.npz
 tactohand-view
 ```
+
+仓库已附带 ARCTIC、HOT3D、HOI4D、DexYCB 的 [8 段示例视频](examples/README.zh-CN.md)，
+clone 后即可使用。
 
 打开终端打印的地址，即可查看预测或上传其他视频。看板显示接触、距离、力模长和
 预测的双手可见性，也支持本地看板连接[远端 GPU 服务](docs/usage.zh-CN.md#remote-inference)。

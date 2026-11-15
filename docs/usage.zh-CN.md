@@ -47,7 +47,7 @@ python -m pip install -e ./manotorch
 
 可直接使用[在线 Demo](https://huggingface.co/spaces/zhenqis123/TactoHand)，上传不超过 30 秒、100 MB 的视频，
 左侧播放视频，右侧通过手部网格查看预测，支持同步播放、旋转缩放和逐帧可见性，
-也可下载完整结果。免费 GPU 请求可能需要排队；本地运行方式见下文。
+可选择下方 8 段示例素材，也可上传自己的视频。免费 GPU 请求可能需要排队；本地运行方式见下文。
 
 ### 启动看板
 
