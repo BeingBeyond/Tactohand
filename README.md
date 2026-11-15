@@ -22,8 +22,9 @@ Install FFmpeg and ffprobe for video inference, then install from the checkout:
 python -m pip install '.[inference]'
 ```
 
-Prepare a checkpoint and its complete saved YAML configuration. Model weights,
-datasets and MANO assets are obtained separately; see [setup](docs/usage.md#setup).
+Download the checkpoint and matching YAML from the
+[prediction viewer guide](docs/usage.md#prediction-viewer). For datasets and MANO
+assets, see [setup](docs/usage.md#setup).
 
 ```bash
 mkdir -p prediction_outputs/demo

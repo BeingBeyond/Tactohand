@@ -36,12 +36,14 @@ PyTorch、CUDA、FFmpeg 匹配；`data.video_backend=cv2` 可选择 OpenCV。
 
 ### 启动看板
 
-准备 checkpoint 及其配套的完整 YAML 配置，然后运行：
+从[百度网盘](https://pan.baidu.com/s/1iG-hTmECh_FrkJKIgWdSiQ?pwd=898f)下载 `tactohand.ckpt`
+及配套的 `tactohand.yaml`（提取码：`898f`，永久有效）。将两个文件放入
+`checkpoints/` 目录，然后启动看板：
 
 ```bash
 mkdir -p checkpoints
-cp /path/to/model.ckpt checkpoints/tactohand.ckpt
-cp /path/to/model.yaml checkpoints/tactohand.yaml
+cp /path/to/downloads/tactohand.ckpt checkpoints/
+cp /path/to/downloads/tactohand.yaml checkpoints/
 tactohand-view --port 8765
 ```
 

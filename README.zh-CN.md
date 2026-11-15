@@ -21,8 +21,8 @@ TactoHand 从单目 RGB 视频预测双手各 778 个 MANO 顶点的接触、距
 python -m pip install '.[inference]'
 ```
 
-准备 checkpoint 及其配套的完整 YAML 配置。权重、数据集和 MANO 资源须另行获取，
-详见[环境准备](docs/usage.zh-CN.md#setup)。
+请从[预测看板指南](docs/usage.zh-CN.md#预测看板)下载权重及配套的 YAML 配置。
+数据集和 MANO 资源的准备方式见[环境准备](docs/usage.zh-CN.md#setup)。
 
 ```bash
 mkdir -p prediction_outputs/demo

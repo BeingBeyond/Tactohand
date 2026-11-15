@@ -39,12 +39,14 @@ with visibility shown above each hand.
 
 ### Start the viewer
 
-Prepare your checkpoint and its matching complete YAML configuration, then run:
+Download `tactohand.ckpt` and its matching `tactohand.yaml` from
+[Baidu Netdisk](https://pan.baidu.com/s/1iG-hTmECh_FrkJKIgWdSiQ?pwd=898f) (access code: `898f`; no expiry).
+Place both files in `checkpoints/`, then start the viewer:
 
 ```bash
 mkdir -p checkpoints
-cp /path/to/model.ckpt checkpoints/tactohand.ckpt
-cp /path/to/model.yaml checkpoints/tactohand.yaml
+cp /path/to/downloads/tactohand.ckpt checkpoints/
+cp /path/to/downloads/tactohand.yaml checkpoints/
 tactohand-view --port 8765
 ```
 
