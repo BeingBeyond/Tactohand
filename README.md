@@ -7,7 +7,12 @@
 Ziheng Xi · Weibo Li · Jiayi Yu · Sipeng Zheng · Wanpeng Zhang<br>
 Haiweng Xu · Hao Luo · Chuan Mao · Zongqing Lu
 
-[Paper](https://arxiv.org/abs/2610.39585) · [Code](https://github.com/BeingBeyond/Tactohand) · [Citation](#citation)
+[![arXiv](https://img.shields.io/badge/arXiv-2610.39585-b31b1b.svg)](https://arxiv.org/abs/2610.39585)
+[![Code](https://img.shields.io/badge/Code-Available-brightgreen.svg)](https://github.com/BeingBeyond/Tactohand)
+[![Project Website](https://img.shields.io/badge/Project-Website-0072B2.svg)](https://zhenqis123.github.io/tactohand-site/)
+[![Data & checkpoints](https://img.shields.io/badge/Data%20%26%20checkpoints-Release%20plan-orange.svg)](#release-plan)
+
+[Release Plan](#release-plan) · [Citation](#citation)
 
 TactoHand predicts contact, proximity and 3D force at each of the 778 MANO
 vertices per hand from monocular RGB video. It combines frame features with
@@ -47,6 +52,17 @@ performs inference. RGB-only inference does not require datasets or MANO geometr
 | [Datasets](docs/datasets.md) | Prepared data, sampling and dataset-specific conventions |
 | [Label format](docs/label_format.md) | Tables, units, indexing and geometry contracts |
 | [Development](docs/development.md) | Architecture, checks, packaging and contributions |
+
+## Release Plan
+
+- [x] Release the project website.
+- [x] Release the source code.
+- [ ] Release pretrained checkpoints ([download](docs/usage.md#prediction-viewer)).
+- [ ] Release the dataset.
+
+## License
+
+The code is available under the [MIT License](LICENSE).
 
 ## Citation
 

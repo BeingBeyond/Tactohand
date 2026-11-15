@@ -7,7 +7,12 @@
 Ziheng Xi · Weibo Li · Jiayi Yu · Sipeng Zheng · Wanpeng Zhang<br>
 Haiweng Xu · Hao Luo · Chuan Mao · Zongqing Lu
 
-[论文](https://arxiv.org/abs/2610.39585) · [代码](https://github.com/BeingBeyond/Tactohand) · [引用](#citation)
+[![arXiv](https://img.shields.io/badge/arXiv-2610.39585-b31b1b.svg)](https://arxiv.org/abs/2610.39585)
+[![Code](https://img.shields.io/badge/Code-Available-brightgreen.svg)](https://github.com/BeingBeyond/Tactohand)
+[![Project Website](https://img.shields.io/badge/Project-Website-0072B2.svg)](https://zhenqis123.github.io/tactohand-site/)
+[![Data & checkpoints](https://img.shields.io/badge/Data%20%26%20checkpoints-Release%20plan-orange.svg)](#release-plan)
+
+[发布计划](#release-plan) · [引用](#citation)
 
 TactoHand 从单目 RGB 视频预测双手各 778 个 MANO 顶点的接触、距离和三维力。
 模型通过时序注意力融合图像特征，使用几何、运动和可微物理监督训练。
@@ -44,6 +49,19 @@ tactohand-view
 | [数据集](docs/datasets.zh-CN.md) | prepared 数据、采样及数据集读取约定 |
 | [标签格式](docs/label_format.zh-CN.md) | 表结构、单位、索引与几何契约 |
 | [开发指南](docs/development.zh-CN.md) | 架构、检查、打包与贡献方式 |
+
+<a id="release-plan"></a>
+
+## 发布计划
+
+- [x] 发布项目网站。
+- [x] 发布源代码。
+- [ ] 发布预训练权重（[下载入口](docs/usage.zh-CN.md#预测看板)）。
+- [ ] 发布数据集。
+
+## 许可证
+
+代码采用 [MIT 许可证](LICENSE)。
 
 <a id="citation"></a>
 
