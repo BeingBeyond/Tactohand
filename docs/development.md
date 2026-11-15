@@ -26,6 +26,10 @@ Learning windows, augmentation and supervision eligibility belong in
 `training/tactohand_wrench/`; HOPE is a separate task. Retain stable model paths,
 checkpoint keys and saved Hydra targets when moving code.
 
+The viewer keeps server settings in `/api/server`; prediction uploads use the server-selected
+checkpoint and device. The local dashboard stores each browser's target separately
+and proxies uploads, results and ranged video requests to that server.
+
 ## Operations and checks
 
 Run commands from the repository root. Put prepared-data checks in
@@ -38,6 +42,7 @@ code. Long jobs need separate logs, incremental outputs and completion markers.
 tools/run_checks.sh --quick
 python3 -S tools/checks/test_inference_dashboard.py
 python tools/checks/test_inference_visibility.py
+python tools/checks/test_inference_server.py
 ```
 
 `--quick` checks shell syntax, tracked-file hygiene and dependencies. `--full`

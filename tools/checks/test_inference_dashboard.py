@@ -4,6 +4,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from http.client import HTTPConnection
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import json
 from pathlib import Path
 import sys
 from threading import Thread
@@ -105,6 +106,33 @@ class DashboardTests(unittest.TestCase):
         status, _, body = self.request('GET', '/api/runs/missing')
         self.assertEqual(status, 404)
         self.assertIn(b'missing run', body)
+
+    def test_browser_connection_does_not_change_other_clients(self):
+        status, headers, body = self.request('POST', '/dashboard/connection',
+            json.dumps({'backend_url': 'http://127.0.0.1:1/other'}),
+            {'Content-Type': 'application/json'})
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)['backend_url'], 'http://127.0.0.1:1/other')
+        cookie = headers['Set-Cookie'].split(';', 1)[0]
+        own = json.loads(self.request('GET', '/dashboard/connection', headers={'Cookie': cookie})[2])
+        other = json.loads(self.request('GET', '/dashboard/connection')[2])
+        self.assertEqual(own['backend_url'], 'http://127.0.0.1:1/other')
+        self.assertNotEqual(own['backend_url'], other['backend_url'])
+        self.assertEqual(self.request('GET', '/api/runs', headers={'Cookie': cookie})[0], 502)
+        self.assertEqual(self.request('GET', '/api/runs/missing')[0], 404)
+
+    def test_reject_dashboard_as_its_own_backend(self):
+        status, _, _ = self.request('POST', '/dashboard/connection',
+            json.dumps({'backend_url': f'http://127.0.0.1:{self.port}'}),
+            {'Content-Type': 'application/json'})
+        self.assertEqual(status, 400)
+
+    def test_dashboard_can_start_without_a_backend(self):
+        server = DashboardServer(('127.0.0.1', 0))
+        with serving(server) as port:
+            self.port = port
+            self.assertEqual(self.request('GET', '/')[0], 200)
+            self.assertEqual(self.request('GET', '/api/runs')[0], 503)
 
     def test_reject_chunked_upload(self):
         self.assertEqual(self.request('POST', '/api/jobs', body=b'',

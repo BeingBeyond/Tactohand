@@ -45,7 +45,22 @@ canvas{width:100%;aspect-ratio:1 / 1;display:block;touch-action:none}canvas.orbi
 #run-status{color:var(--muted);overflow-wrap:anywhere}
 .prediction-form{margin-bottom:18px}
 .prediction-form .bar{justify-content:flex-start}
-.prediction-form select{max-width:36vw;margin-left:6px}
+.connection-panels{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;margin-bottom:18px}
+.connection-panel{padding:16px 18px}.connection-panel h2{font-size:19px}
+.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px}
+.panel-copy{margin:0 0 16px;color:var(--muted);font-size:13px;line-height:1.5}
+.settings-row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+.settings-field{display:flex;flex:1;min-width:120px;flex-direction:column;gap:7px;color:var(--muted);font-size:13px}
+.settings-field input,.settings-field select{width:100%;min-width:0;background:var(--base);color:var(--ink);border:1px solid var(--edge);padding:8px 9px;font:inherit}
+.settings-field.checkpoint{flex:2}.settings-field.device{max-width:150px}
+.settings-actions{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+.connection-state{font-size:12px;padding:4px 8px;border:1px solid var(--edge);color:var(--muted)}
+.connection-state[data-state=ready]{color:#a9eaf6;border-color:#527988}
+.connection-state[data-state=error]{color:#ffb5ad;border-color:#a76161}
+.settings-status{margin:12px 0 0;color:var(--muted);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.settings-status:empty{display:none}
+button:disabled{opacity:.45;cursor:default}
+@media(max-width:900px){.connection-panels{grid-template-columns:1fr}}
 .prediction-form input[type=file]{max-width:100%}
 #prediction-status{margin:0;padding:0 14px 12px;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
 #prediction-status:empty{display:none}
@@ -63,9 +78,36 @@ canvas{width:100%;aspect-ratio:1 / 1;display:block;touch-action:none}canvas.orbi
 <body>
 <main>
 <header><h1>TactoHand</h1><div id="name" class="mono"></div></header>
+<div class="connection-panels">
+<section class="panel connection-panel" aria-labelledby="server-heading">
+  <div class="panel-heading"><h2 id="server-heading">Server</h2><span id="server-state" class="connection-state">Not connected</span></div>
+  <p class="panel-copy">Manage checkpoint inference on the connected server.</p>
+  <form id="server-form" class="controls">
+    <div class="settings-row">
+      <label class="settings-field checkpoint">Checkpoint<select id="checkpoint-select" disabled></select></label>
+      <label class="settings-field device">Device<input id="server-device" placeholder="cuda:0" disabled></label>
+    </div>
+    <div class="settings-actions">
+      <label><input id="server-enabled" type="checkbox" disabled> Accept new predictions</label>
+      <button id="apply-server" type="submit" disabled>Apply settings</button>
+      <button id="refresh-server" type="button" disabled>Refresh</button>
+    </div>
+  </form>
+  <p id="server-status" class="settings-status" role="status">Connect a server in the Client panel.</p>
+</section>
+<section class="panel connection-panel" aria-labelledby="client-heading">
+  <div class="panel-heading"><h2 id="client-heading">Client</h2><span id="client-state" class="connection-state">Not connected</span></div>
+  <p class="panel-copy">Choose the inference server for this browser.</p>
+  <form id="client-form" class="controls">
+    <label class="settings-field">Server URL<input id="server-url" type="url" placeholder="http://127.0.0.1:18766" required></label>
+    <div class="settings-actions"><button id="connect-server" type="submit">Connect</button></div>
+  </form>
+  <p id="client-status" class="settings-status" role="status"></p>
+</section>
+</div>
 <form id="prediction-form" class="panel controls prediction-form">
   <div class="bar">
-    <label>Checkpoint <select id="checkpoint-select" required disabled></select></label>
+    <h2>New prediction</h2>
     <label class="file">Input video<input id="prediction-file" type="file" accept="video/*,.mkv,.mov,.avi" required></label>
     <span id="prediction-file-name"></span>
     <button id="predict" type="submit" disabled>Predict</button>
@@ -568,7 +610,14 @@ async function refreshRuns(preferred) {
 const checkpointSelect = $("checkpoint-select"), predictionFile = $("prediction-file");
 const predictButton = $("predict"), predictionStatus = $("prediction-status");
 const progressBox = $("prediction-progress"), inferenceProgress = $("inference-progress");
-let predicting = false;
+let serverRequest;
+let predicting = false, serverReady = false, connected = false, serverAvailable = false, applying = false, connecting = false;
+const serverDevice = $("server-device"), serverEnabled = $("server-enabled");
+const serverUrl = $("server-url"), clientStatus = $("client-status"), serverStatus = $("server-status");
+function badge(id, text, state = "") {
+  $(id).textContent = text;
+  $(id).dataset.state = state;
+}
 function showPredictionProgress(percent = null) {
   progressBox.hidden = false;
   if (percent === null) inferenceProgress.removeAttribute("value");
@@ -576,22 +625,116 @@ function showPredictionProgress(percent = null) {
   $("inference-percent").textContent = percent === null ? "" : `${percent}%`;
 }
 function updatePredictButton() {
-  predictButton.disabled = predicting || !checkpointSelect.value || !predictionFile.files.length;
+  const busy = predicting || applying || connecting;
+  predictButton.disabled = busy || !connected || !serverReady || !predictionFile.files.length;
+  $("connect-server").disabled = busy;
+  serverUrl.disabled = busy;
+  $("apply-server").disabled = !serverAvailable || busy;
+  $("refresh-server").disabled = !connected || busy;
+  checkpointSelect.disabled = !serverAvailable || busy || !checkpointSelect.options.length;
+  serverDevice.disabled = serverEnabled.disabled = !serverAvailable || busy;
 }
-async function refreshCheckpoints() {
+function showServerQueue(state) {
+  serverStatus.textContent = `${state.running} running · ${state.queued} queued. Settings apply to new requests.`;
+}
+function installServer(state) {
+  serverAvailable = true;
+  checkpointSelect.replaceChildren(...state.checkpoints.map(({id}) => new Option(id,id)));
+  checkpointSelect.value = state.checkpoint;
+  checkpointSelect.disabled = !state.checkpoints.length;
+  serverDevice.value = state.device;
+  serverDevice.disabled = serverEnabled.disabled = $("refresh-server").disabled = false;
+  serverEnabled.checked = state.enabled;
+  serverReady = state.ready;
+  badge("server-state", state.ready ? "Ready" : state.enabled ? "No checkpoint" : "Paused", state.ready ? "ready" : "");
+  showServerQueue(state);
+  updatePredictButton();
+}
+async function refreshServer() {
+  if (applying) return;
+  serverRequest?.abort();
+  serverRequest = new AbortController();
+  const {signal} = serverRequest;
   try {
-    const {checkpoints} = await fetchJson("/api/checkpoints");
-    const previous = checkpointSelect.value;
-    checkpointSelect.replaceChildren(...checkpoints.map(({id}) => new Option(id,id)));
-    if (checkpoints.some(({id}) => id === previous)) checkpointSelect.value = previous;
-    checkpointSelect.disabled = !checkpoints.length;
-    if (!predicting) predictionStatus.textContent = checkpoints.length ? "" : "No checkpoints with matching YAML configs.";
-    updatePredictButton();
+    const state = await fetchJson("/api/server", {signal});
+    if (!signal.aborted) installServer(state);
   } catch (error) {
-    predictionStatus.textContent = `Could not list checkpoints: ${error.message}`;
+    if (signal.aborted) return;
+    serverReady = serverAvailable = false;
+    checkpointSelect.disabled = serverDevice.disabled = serverEnabled.disabled = $("apply-server").disabled = true;
+    badge("server-state", "Unavailable", "error");
+    serverStatus.textContent = `Could not read server settings: ${error.message}. Restart the inference server with the updated code.`;
+    updatePredictButton();
+    $("apply-server").disabled = true;
   }
 }
-checkpointSelect.onchange = updatePredictButton;
+async function connectServer(save = false) {
+  connecting = true;
+  connected = serverReady = serverAvailable = false;
+  checkpointSelect.replaceChildren();
+  checkpointSelect.disabled = serverDevice.disabled = serverEnabled.disabled = true;
+  predictionStatus.textContent = "";
+  progressBox.hidden = true;
+  runStatus.textContent = "";
+  runRequest?.abort();
+  listRequest?.abort();
+  serverRequest?.abort();
+  data = null;
+  video.pause();
+  setVideo();
+  $("layout").hidden = $("transport").hidden = true;
+  $("name").textContent = "";
+  runSelect.replaceChildren();
+  runSelect.disabled = true;
+  badge("client-state", "Connecting");
+  badge("server-state", "Not connected");
+  clientStatus.textContent = "";
+  updatePredictButton();
+  try {
+    const connection = await fetchJson("/dashboard/connection", save ? {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({backend_url:serverUrl.value}),
+    } : {});
+    serverUrl.value = connection.local ? location.origin : connection.backend_url;
+    if (!serverUrl.value) {
+      badge("client-state", "Not connected");
+      serverStatus.textContent = "Connect a server in the Client panel.";
+      return;
+    }
+    const health = await fetchJson("/api/health", {signal:AbortSignal.timeout(12000)});
+    if (health.service !== "tactohand-inference") throw new Error("This URL is not a TactoHand inference server");
+    connected = true;
+    badge("client-state", "Connected", "ready");
+    clientStatus.textContent = connection.local ? "Using the inference service on this host." : "Connection saved for this browser.";
+    await Promise.all([refreshServer(), refreshRuns()]);
+  } catch (error) {
+    badge("client-state", "Connection failed", "error");
+    clientStatus.textContent = `${error.message}. Check the server address and SSH tunnel.`;
+    badge("server-state", "Not connected");
+    serverStatus.textContent = "Connect a server in the Client panel.";
+  } finally {
+    connecting = false;
+    updatePredictButton();
+  }
+}
+$("client-form").onsubmit = event => { event.preventDefault(); if (!predicting) connectServer(true); };
+$("server-form").onsubmit = async event => {
+  event.preventDefault();
+  if (predicting || applying || connecting || !connected) return;
+  const settings = {checkpoint:checkpointSelect.value, device:serverDevice.value.trim(), enabled:serverEnabled.checked};
+  serverRequest?.abort();
+  applying = true;
+  updatePredictButton();
+  try {
+    installServer(await fetchJson("/api/server", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(settings),
+    }));
+  } catch (error) {
+    serverStatus.textContent = `Settings were not applied: ${error.message}`;
+  } finally { applying = false; updatePredictButton(); }
+};
+$("refresh-server").onclick = refreshServer;
 predictionFile.onchange = () => {
   $("prediction-file-name").textContent = predictionFile.files[0]?.name || "";
   updatePredictButton();
@@ -599,13 +742,13 @@ predictionFile.onchange = () => {
 $("prediction-form").onsubmit = async event => {
   event.preventDefault();
   const file = predictionFile.files[0];
-  if (predicting || !file || !checkpointSelect.value) return;
+  if (predicting || !file || !serverReady || !connected) return;
   predicting = true;
   updatePredictButton();
   predictionStatus.textContent = "Uploading video…";
   showPredictionProgress();
   try {
-    const query = new URLSearchParams({checkpoint:checkpointSelect.value,filename:file.name});
+    const query = new URLSearchParams({filename:file.name});
     const {id} = await fetchJson(`/api/jobs?${query}`,{
       method:"POST",headers:{"Content-Type":"application/octet-stream"},body:file,
     });
@@ -613,6 +756,7 @@ $("prediction-form").onsubmit = async event => {
       const job = await fetchJson(`/api/jobs/${encodeURIComponent(id)}`);
       if (job.status === "failed") throw new Error(job.detail);
       predictionStatus.textContent = job.detail;
+      if (job.server_queue) showServerQueue(job.server_queue);
       const progress = job.progress;
       if (job.status === "complete" || job.phase === "preview") showPredictionProgress(100);
       else if (progress) showPredictionProgress(Math.floor(100*progress.completed/progress.total));
@@ -629,12 +773,12 @@ $("prediction-form").onsubmit = async event => {
   } finally {
     predicting = false;
     updatePredictButton();
+    refreshServer();
   }
 };
 runSelect.onchange = () => loadRun(runSelect.value);
-$("refresh-runs").onclick = () => { refreshRuns(); refreshCheckpoints(); };
-refreshRuns();
-refreshCheckpoints();
+$("refresh-runs").onclick = () => { if (connected && !connecting && !applying) { refreshRuns(); refreshServer(); } };
+connectServer();
 </script>
 </body>
 </html>

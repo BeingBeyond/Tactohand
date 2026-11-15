@@ -69,10 +69,14 @@ cp /path/to/downloads/tactohand.yaml checkpoints/
 tactohand-view --port 8765
 ```
 
-Open [http://localhost:8765](http://localhost:8765), choose your checkpoint,
-upload a video and click **Predict**. When it finishes, play the video or drag
-the timeline to inspect the results. Use **Prediction run** to reopen a saved
-result.
+Open [http://localhost:8765](http://localhost:8765). In **Server**, choose the
+checkpoint and device, then click **Apply settings**. Under **New prediction**,
+upload a video and click **Predict**. Play the video or drag the timeline to
+inspect the results; use **Prediction run** to reopen a saved result.
+
+**Client** only selects the server address. **Server** manages the checkpoint,
+device and **Accept new predictions** switch. Turning this switch off pauses new
+requests; running and queued jobs continue with their original settings.
 
 To use MANO models from another location:
 
@@ -105,12 +109,13 @@ ssh -N -o ExitOnForwardFailure=yes -L 18766:127.0.0.1:8766 USER@GPU_HOST
 In another local terminal, start the dashboard from your checkout:
 
 ```bash
-python3 -m training.visualization.inference_dashboard \
-  --backend-url http://127.0.0.1:18766 --port 8765
+python3 -m training.visualization.inference_dashboard --port 8765
 ```
 
-Open [http://localhost:8765](http://localhost:8765) and upload your video as
-usual. Keep the SSH tunnel open while using the dashboard.
+Open [http://localhost:8765](http://localhost:8765). In **Client**, enter
+`http://127.0.0.1:18766` and click **Connect**. Manage the GPU server's checkpoint
+and device in **Server**, then upload your video under **New prediction**.
+Keep the SSH tunnel open while using the dashboard.
 
 ## Training
 

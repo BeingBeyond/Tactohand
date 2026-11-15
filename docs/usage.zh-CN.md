@@ -64,8 +64,12 @@ cp /path/to/downloads/tactohand.yaml checkpoints/
 tactohand-view --port 8765
 ```
 
-打开 [http://localhost:8765](http://localhost:8765)，选择 checkpoint，上传视频并点击
-**Predict**。完成后可播放视频或拖动时间轴查看结果；在 **Prediction run** 中切换已保存的结果。
+打开 [http://localhost:8765](http://localhost:8765)，在 **Server** 面板选择 checkpoint
+和设备，点击 **Apply settings**。然后在 **New prediction** 区域上传视频并点击
+**Predict**。可播放视频或拖动时间轴查看结果，在 **Prediction run** 中切换已保存的结果。
+
+**Client** 只配置服务器地址；**Server** 管理 checkpoint、设备和 **Accept new predictions**
+开关。关闭该开关后暂停接收新请求，运行中及已排队的任务仍按原配置继续执行。
 
 MANO 模型放在其他位置时，可指定目录：
 
@@ -96,12 +100,12 @@ ssh -N -o ExitOnForwardFailure=yes -L 18766:127.0.0.1:8766 USER@GPU_HOST
 另开一个本地终端，从仓库目录启动看板：
 
 ```bash
-python3 -m training.visualization.inference_dashboard \
-  --backend-url http://127.0.0.1:18766 --port 8765
+python3 -m training.visualization.inference_dashboard --port 8765
 ```
 
-打开 [http://localhost:8765](http://localhost:8765)，照常上传视频。
-使用期间保持 SSH 隧道连接。
+打开 [http://localhost:8765](http://localhost:8765)，在 **Client** 面板输入
+`http://127.0.0.1:18766` 并点击 **Connect**。在 **Server** 面板管理 GPU 服务器的
+checkpoint 和设备，再到 **New prediction** 区域上传视频。使用期间保持 SSH 隧道连接。
 
 ## 训练
 

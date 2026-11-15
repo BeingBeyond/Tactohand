@@ -65,6 +65,7 @@ include = [
   "tools/checks/check_prediction.py",
   "tools/checks/test_inference_dashboard.py",
   "tools/checks/test_inference_visibility.py",
+  "tools/checks/test_inference_server.py",
   "tools/checks/check_resources.py",
   "scripts/training/run_experiment.sh",
   "README.md",

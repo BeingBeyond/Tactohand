@@ -6,12 +6,13 @@ import base64
 import errno
 from functools import lru_cache
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import ThreadingHTTPServer
 from importlib.resources import files
 import json
 import mimetypes
 import os
 from pathlib import Path
+from typing import BinaryIO, cast
 import re
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 from zipfile import BadZipFile
@@ -19,6 +20,7 @@ from zipfile import BadZipFile
 import numpy as np
 
 from training.visualization.inference_jobs import PredictionJobs, VIDEO_SUFFIXES
+from training.visualization.inference_dashboard import DashboardHandler
 
 VERTICES = 778
 
@@ -37,7 +39,7 @@ def prediction_field(archive, key: str, dimensions: tuple[int, ...], batch: int)
 
 
 def encoded(array: np.ndarray, dtype: str) -> str:
-    return base64.b64encode(np.ascontiguousarray(array, dtype=dtype)).decode('ascii')
+    return base64.b64encode(np.ascontiguousarray(array, dtype=dtype).tobytes()).decode('ascii')
 
 
 def force_metric(force: np.ndarray, unit: str) -> dict:
@@ -155,7 +157,7 @@ def mano_templates(root: Path, force: np.ndarray | None = None) -> list[dict]:
     result = []
     for hand, side in enumerate(('left', 'right')):
         layer, vertices, faces, rotation, encoded_mesh = mano_template(root, side)
-        mesh = dict(encoded_mesh)
+        mesh: dict[str, object] = dict(encoded_mesh)
         if force is not None:
             mesh['forceVectors'] = rest_force_vectors(layer, vertices, faces, rotation, force[:, hand], side)
         result.append(mesh)
@@ -219,6 +221,9 @@ class ViewerServer(ThreadingHTTPServer):
         self.api_only = api_only
         self.html = files('training.visualization').joinpath('inference_viewer.html').read_bytes()
         self.jobs = PredictionJobs(self.outputs, checkpoints.resolve(), device) if checkpoints else None
+        self.backend_url = ''
+        self.backend_timeout = 300
+        self.local_backend = True
         super().__init__(address, ViewerHandler)
 
     def server_close(self) -> None:
@@ -254,21 +259,13 @@ class ViewerServer(ThreadingHTTPServer):
         return data
 
 
-class ViewerHandler(BaseHTTPRequestHandler):
-    server: ViewerServer
+class ViewerHandler(DashboardHandler):
+    @property
+    def viewer(self) -> ViewerServer:
+        return cast(ViewerServer, self.server)
 
     def log_message(self, format, *args):
         pass
-
-    def reply(self, status: HTTPStatus, body: bytes, content_type: str) -> None:
-        self.send_response(status)
-        self.send_header('Content-Type', content_type)
-        self.send_header('Content-Length', str(len(body)))
-        self.send_header('Cache-Control', 'no-store')
-        self.send_header('X-Content-Type-Options', 'nosniff')
-        self.end_headers()
-        if self.command != 'HEAD':
-            self.wfile.write(body)
 
     def json(self, status: HTTPStatus, body: dict) -> None:
         self.reply(status, json.dumps(body, allow_nan=False).encode('utf-8'), 'application/json')
@@ -311,36 +308,47 @@ class ViewerHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = urlsplit(self.path).path
         try:
+            if self.handle_connection():
+                return
+            if path.startswith('/api/') and self.selected_backend():
+                self.proxy()
+                return
             if path in ('/', '/index.html'):
-                if self.server.api_only:
+                if self.viewer.api_only:
                     self.json(HTTPStatus.NOT_FOUND, {'error': 'API service; open the local dashboard'})
                     return
-                self.reply(HTTPStatus.OK, self.server.html, 'text/html; charset=utf-8')
+                self.reply(HTTPStatus.OK, self.viewer.html, 'text/html; charset=utf-8')
                 return
             if path == '/api/health':
                 self.json(HTTPStatus.OK, {'status': 'ok', 'service': 'tactohand-inference'})
                 return
             if path == '/api/runs':
-                self.json(HTTPStatus.OK, {'runs': self.server.runs()})
+                self.json(HTTPStatus.OK, {'runs': self.viewer.runs()})
                 return
             if path == '/api/checkpoints':
-                jobs = self.server.jobs
+                jobs = self.viewer.jobs
                 self.json(HTTPStatus.OK, {'checkpoints': jobs.catalog() if jobs else []})
                 return
+            if path == '/api/server':
+                jobs = self.viewer.jobs
+                self.json(HTTPStatus.OK, jobs.configuration() if jobs else {
+                    'checkpoint': '', 'device': '', 'enabled': False, 'ready': False,
+                    'checkpoints': [], 'queued': 0, 'running': 0})
+                return
             job = re.fullmatch(r'/api/jobs/([^/]+)', path)
-            if job and self.server.jobs:
-                state = self.server.jobs.status(unquote(job[1]))
+            if job and self.viewer.jobs:
+                state = self.viewer.jobs.status(unquote(job[1]))
                 if state is not None:
                     self.json(HTTPStatus.OK, state)
                     return
             match = re.fullmatch(r'/api/runs/([^/]+)(/video)?', path)
             if match is not None:
                 name = unquote(match[1])
-                prediction = self.server.prediction(name)
+                prediction = self.viewer.prediction(name)
                 if prediction is not None:
                     metadata = read_metadata(prediction)
                     if not match[2]:
-                        self.json(HTTPStatus.OK, self.server.payload(name, prediction, metadata))
+                        self.json(HTTPStatus.OK, self.viewer.payload(name, prediction, metadata))
                         return
                     video = run_video(prediction, metadata)
                     if video is not None:
@@ -356,7 +364,20 @@ class ViewerHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         request = urlsplit(self.path)
-        if request.path != '/api/jobs' or self.server.jobs is None:
+        if self.handle_connection():
+            return
+        try:
+            if request.path.startswith('/api/') and self.selected_backend():
+                self.proxy()
+                return
+            if request.path == '/api/server' and self.viewer.jobs is not None:
+                state = self.viewer.jobs.configure(self.read_json())
+                self.json(HTTPStatus.OK, state)
+                return
+        except (OSError, ValueError) as error:
+            self.json(HTTPStatus.BAD_REQUEST, {'error': str(error)})
+            return
+        if request.path != '/api/jobs' or self.viewer.jobs is None:
             self.json(HTTPStatus.NOT_FOUND, {'error': 'Prediction endpoint not found'})
             return
         if self.headers.get('Content-Type') != 'application/octet-stream':
@@ -365,9 +386,9 @@ class ViewerHandler(BaseHTTPRequestHandler):
         try:
             query = parse_qs(request.query)
             filename, = query['filename']
-            checkpoint, = query['checkpoint']
+            checkpoint = query.get('checkpoint', [None])[0]
             length = int(self.headers.get('Content-Length', '0'))
-            run = self.server.jobs.submit(filename, checkpoint, self.rfile, length)
+            run = self.viewer.jobs.submit(filename, checkpoint, cast(BinaryIO, self.rfile), length)
             self.json(HTTPStatus.ACCEPTED, {'id': run})
         except (BrokenPipeError, ConnectionResetError):
             return
@@ -402,6 +423,7 @@ def main() -> None:
         parser.error('Use a valid port and a nonnegative batch index')
     if args.start_seconds is not None and (not np.isfinite(args.start_seconds) or args.start_seconds < 0):
         parser.error('--start-seconds must be nonnegative and finite')
+    server: ViewerServer | None = None
     for port in (8765, 0) if args.port is None else (args.port,):
         try:
             server = ViewerServer((args.host, port), outputs, mano_root=mano_root,
@@ -412,6 +434,7 @@ def main() -> None:
         except OSError as error:
             if args.port is not None or port == 0 or error.errno != errno.EADDRINUSE:
                 parser.error(str(error))
+    assert server is not None
     with server:
         link_host = '127.0.0.1' if args.host == '0.0.0.0' else args.host
         print(f'Prediction runs: {outputs}', flush=True)

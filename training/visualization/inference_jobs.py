@@ -25,6 +25,31 @@ class PredictionJobs:
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='tactohand-infer')
         self.lock = Lock()
         self.jobs: dict[str, dict[str, str]] = {}
+        self.enabled = True
+        available = self.catalog()
+        self.active_checkpoint = available[0]['id'] if available else ''
+
+    def configuration(self) -> dict:
+        checkpoints = self.catalog()
+        with self.lock:
+            return {'checkpoint': self.active_checkpoint, 'device': self.device,
+                    'enabled': self.enabled,
+                    'ready': self.enabled and any(item['id'] == self.active_checkpoint for item in checkpoints),
+                    'checkpoints': checkpoints,
+                    'queued': sum(job['status'] == 'queued' for job in self.jobs.values()),
+                    'running': sum(job['status'] == 'running' for job in self.jobs.values())}
+
+    def configure(self, settings: dict) -> dict:
+        checkpoint, device, enabled = (settings.get(key) for key in ('checkpoint', 'device', 'enabled'))
+        if not isinstance(checkpoint, str) or (checkpoint and self.checkpoint(checkpoint) is None):
+            raise ValueError('Choose a server checkpoint with a matching YAML config')
+        if not isinstance(device, str) or not re.fullmatch(r'auto|cpu|mps|cuda(?::[0-9]+)?', device):
+            raise ValueError('Use auto, cpu, mps, cuda or cuda:N for the server device')
+        if not isinstance(enabled, bool):
+            raise ValueError('enabled must be true or false')
+        with self.lock:
+            self.active_checkpoint, self.device, self.enabled = checkpoint, device, enabled
+        return self.configuration()
 
     def close(self) -> None:
         self.executor.shutdown(wait=True, cancel_futures=True)
@@ -53,6 +78,10 @@ class PredictionJobs:
             if job is None:
                 return None
             state: dict[str, object] = dict(job)
+            state['server_queue'] = {
+                'queued': sum(item['status'] == 'queued' for item in self.jobs.values()),
+                'running': sum(item['status'] == 'running' for item in self.jobs.values()),
+            }
         if state.get('phase') == 'inference':
             log = self.outputs / f'.pending-{run}' / 'inference.log'
             try:
@@ -73,10 +102,16 @@ class PredictionJobs:
         with self.lock:
             self.jobs[run] = {'id': run, 'status': status, 'detail': detail, 'phase': phase}
 
-    def submit(self, name: str, checkpoint: str, stream: BinaryIO, length: int) -> str:
+    def submit(self, name: str, checkpoint: str | None, stream: BinaryIO, length: int) -> str:
         if length <= 0:
             raise ValueError('The video upload is empty')
-        weights_config = self.checkpoint(checkpoint)
+        with self.lock:
+            if not self.enabled:
+                raise RuntimeError('The inference server is paused; enable new predictions in the Server panel')
+            selected, device = self.active_checkpoint, self.device
+        if checkpoint and checkpoint != selected:
+            raise ValueError('Checkpoint selection belongs to the server; update the Server panel first')
+        weights_config = self.checkpoint(selected)
         if weights_config is None:
             raise ValueError('Choose a checkpoint with a matching YAML config')
         suffix = Path(name).suffix.lower()
@@ -100,10 +135,11 @@ class PredictionJobs:
             stage.rmdir()
             raise
         self.update(run, 'queued', 'Waiting for the prediction worker')
-        self.executor.submit(self.predict, run, name, stage, source, *weights_config)
+        self.executor.submit(self.predict, run, name, stage, source, *weights_config, device)
         return run
 
-    def predict(self, run: str, name: str, stage: Path, source: Path, weights: Path, config: Path) -> None:
+    def predict(self, run: str, name: str, stage: Path, source: Path, weights: Path, config: Path,
+                device: str) -> None:
         log = stage / 'inference.log'
         output = stage / 'predictions.npz'
         self.update(run, 'running', 'Loading checkpoint and sampling video…', phase='inference')
@@ -115,7 +151,7 @@ class PredictionJobs:
                 subprocess.run([
                     sys.executable, '-u', '-m', 'training.infer_tactohand',
                     '--config', str(config), '--ckpt', str(weights),
-                    '--video', str(source), '--full-video', '--device', self.device,
+                    '--video', str(source), '--full-video', '--device', device,
                     '--output', str(output),
                 ], stdout=stream, stderr=subprocess.STDOUT, env=environment, check=True)
                 if not output.with_suffix('.done').is_file():

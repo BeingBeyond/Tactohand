@@ -24,6 +24,9 @@ Core 不导入 training、label_generation、scripts 或 tools。
 `training/tactohand_wrench/`，HOPE 是独立任务。移动代码时保留模型路径、
 checkpoint 键和已保存 Hydra target 的兼容性。
 
+看板通过 `/api/server` 管理服务端配置，上传推理请求使用服务端选定的 checkpoint 和设备。
+本地客户端分别保存各浏览器的连接目标，并代理视频上传、结果读取及分段视频请求。
+
 ## 操作与检查
 
 在仓库根目录运行命令。真实数据检查放在 `scripts/data_checks/`，开发回归放在
@@ -35,6 +38,7 @@ checkpoint 键和已保存 Hydra target 的兼容性。
 tools/run_checks.sh --quick
 python3 -S tools/checks/test_inference_dashboard.py
 python tools/checks/test_inference_visibility.py
+python tools/checks/test_inference_server.py
 ```
 
 `--quick` 检查 shell、跟踪文件卫生和依赖边界，`--full` 增加 launcher 契约和 pyright。
