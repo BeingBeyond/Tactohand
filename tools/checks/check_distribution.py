@@ -225,12 +225,15 @@ def main() -> int:
             for name, options in (
                 ("tactohand-infer", ["--help"]),
                 ("tactohand-view", ["--help"]),
+                ("tactohand-dashboard", ["--help"]),
                 ("tactohand-eval", ["--help"]),
                 ("tactohand-eval", ["--list-metrics"]),
                 ("tactohand-train", ["--cfg", "job", "--resolve"]),
             ):
                 run(name + "-" + options[0].removeprefix("--"),
                     [sys.executable, "-I", "-c", ENTRYPOINT, str(target), name, *options], work)
+            run("installed-dashboard-stdlib", [sys.executable, "-I", "-S", "-c", ENTRYPOINT,
+                str(target), "tactohand-dashboard", "--help"], work)
             run("installed-network", [sys.executable, "-I", "-c", PROBE, str(target), str(work)], work)
             run("installed-inference", [sys.executable, "-I", "-c", ENTRYPOINT, str(target),
                 "tactohand-infer", "--config", str(work / "model.yaml"), "--ckpt", str(work / "synthetic.pt"),

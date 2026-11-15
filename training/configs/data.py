@@ -10,7 +10,7 @@ from omegaconf import DictConfig, OmegaConf
 class SubstepForceDataConfig:
     """Three 30 Hz force targets for every 10 Hz video token (the tactohand task).
 
-    Reads the labels-v5 contract (docs/labels_v5.md) directly from the dataset
+    Reads the labels-v5 contract (docs/label_format.md) directly from the dataset
     roots; no external stream/runtime caches exist anymore.
     """
 

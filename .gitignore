@@ -102,8 +102,6 @@ artifacts/tactohand/*.npz
 # Local model archives (SMPLX/MANO downloads; license-restricted, re-downloadable)
 /assets/**
 !/assets/**/
-!/assets/**/README.md
-!/assets/README.md
 !/assets/manifest.json
 !/assets/mano/corrected/provenance/*.json
 
@@ -112,7 +110,6 @@ artifacts/tactohand/*.npz
 
 # Local working outputs; versioned training resources live in core/resources/.
 /artifacts/*
-!/artifacts/README.md
 /prediction_outputs/
 /temp_data/
 /test_results/

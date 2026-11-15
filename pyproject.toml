@@ -43,6 +43,7 @@ tactohand-train = "training.cli:train_main"
 tactohand-eval = "training.eval_tactohand:main"
 tactohand-infer = "training.infer_tactohand:main"
 tactohand-view = "training.visualization.inference_viewer:main"
+tactohand-dashboard = "training.visualization.inference_dashboard:main"
 
 [tool.setuptools]
 include-package-data = false

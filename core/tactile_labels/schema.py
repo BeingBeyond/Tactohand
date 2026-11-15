@@ -1,4 +1,4 @@
-"""labels-v5 storage constants (docs/labels_v5.md)."""
+"""labels-v5 storage constants (docs/label_format.md)."""
 from __future__ import annotations
 
 import pyarrow as pa

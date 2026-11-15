@@ -1,4 +1,4 @@
-"""Shared visualization library (docs/architecture.md).
+"""Shared visualization library (docs/development.md).
 
 Layered capabilities for labels/contact/proximity/force visualization:
 camera access (L0), projection (L1), drawing primitives (L2), panel

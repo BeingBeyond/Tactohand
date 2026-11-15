@@ -58,6 +58,11 @@ def load_predictions(path: Path, batch: int, metadata: dict, start: float | None
             raise ValueError('Prediction fields have different frame counts')
         if np.any((contact < 0) | (contact > 1)) or np.any(distance < 0):
             raise ValueError('Contact must be in [0,1] and decoded distance must be nonnegative')
+        visibility = None
+        if 'hand_visibility_prob_10hz' in archive:
+            visibility = prediction_field(archive, 'hand_visibility_prob_10hz', (2,), batch)
+            if len(visibility) != len(contact) or np.any((visibility < 0) | (visibility > 1)):
+                raise ValueError('Hand visibility must match the prediction timeline and be in [0,1]')
 
         timing_key = next((key for key in ('source_frame_times_s', 'target_times_s') if key in archive), None)
         if timing_key is None:
@@ -90,6 +95,7 @@ def load_predictions(path: Path, batch: int, metadata: dict, start: float | None
                 raise ValueError('Local force must match the prediction timeline')
     return {
         'times': times.tolist(), 'indices': indices,
+        'handVisibility': visibility.tolist() if visibility is not None else None,
         'metrics': {
             'contact': {'data': encoded(contact, '<f4'), 'unit': 'probability', 'max': 1},
             'distance': {'data': encoded(distance * 1000, '<f4'), 'unit': 'mm', 'max': 250},
@@ -205,11 +211,12 @@ class ViewerServer(ThreadingHTTPServer):
 
     def __init__(self, address: tuple[str, int], outputs: Path, *,
                  mano_root: Path | None = None, batch: int = 0, start: float | None = None,
-                 checkpoints: Path | None = None, device: str = 'auto'):
+                 checkpoints: Path | None = None, device: str = 'auto', api_only: bool = False):
         self.outputs = outputs.resolve()
         self.mano_root = mano_root.expanduser().resolve() if mano_root else None
         self.batch = batch
         self.start = start
+        self.api_only = api_only
         self.html = files('training.visualization').joinpath('inference_viewer.html').read_bytes()
         self.jobs = PredictionJobs(self.outputs, checkpoints.resolve(), device) if checkpoints else None
         super().__init__(address, ViewerHandler)
@@ -305,7 +312,13 @@ class ViewerHandler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         try:
             if path in ('/', '/index.html'):
+                if self.server.api_only:
+                    self.json(HTTPStatus.NOT_FOUND, {'error': 'API service; open the local dashboard'})
+                    return
                 self.reply(HTTPStatus.OK, self.server.html, 'text/html; charset=utf-8')
+                return
+            if path == '/api/health':
+                self.json(HTTPStatus.OK, {'status': 'ok', 'service': 'tactohand-inference'})
                 return
             if path == '/api/runs':
                 self.json(HTTPStatus.OK, {'runs': self.server.runs()})
@@ -375,6 +388,7 @@ def main() -> None:
     parser.add_argument('--checkpoints-root', type=Path, default=Path('checkpoints'),
                         help='checkpoint and YAML directory (default: checkpoints/)')
     parser.add_argument('--device', default='auto', help='prediction device (default: auto)')
+    parser.add_argument('--api-only', action='store_true', help='serve the GPU API without the dashboard page')
     parser.add_argument('--batch-index', type=int, default=0)
     parser.add_argument('--start-seconds', type=float, help='override the first sample time for older exports')
     args = parser.parse_args()
@@ -392,7 +406,8 @@ def main() -> None:
         try:
             server = ViewerServer((args.host, port), outputs, mano_root=mano_root,
                                   batch=args.batch_index, start=args.start_seconds,
-                                  checkpoints=args.checkpoints_root.expanduser(), device=args.device)
+                                  checkpoints=args.checkpoints_root.expanduser(), device=args.device,
+                                  api_only=args.api_only)
             break
         except OSError as error:
             if args.port is not None or port == 0 or error.errno != errno.EADDRINUSE:
@@ -400,7 +415,7 @@ def main() -> None:
     with server:
         link_host = '127.0.0.1' if args.host == '0.0.0.0' else args.host
         print(f'Prediction runs: {outputs}', flush=True)
-        print(f'Open http://{link_host}:{server.server_port}/', flush=True)
+        print(f'{"Inference API" if args.api_only else "Open"} http://{link_host}:{server.server_port}/', flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:

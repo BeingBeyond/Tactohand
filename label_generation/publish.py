@@ -2,7 +2,7 @@
 """Write the final labels-v5 tree for one dataset directly from a solver run.
 
 The formal generation chain is two commands (spec §2,
-docs/labels_v5.md):
+docs/label_format.md):
 
   1. solve    scripts/labels/recipes/a800_8gpu_solve.sh
               -> canonical NPZ run tree (audit/provenance endpoint, unchanged)

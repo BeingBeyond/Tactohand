@@ -25,7 +25,9 @@ button:focus-visible,input:focus-visible,.file:focus-within{outline:2px solid va
 .file input{width:1px;height:1px;position:absolute;opacity:0}.file{display:inline-block}
 .hands{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--edge);border-bottom:1px solid var(--edge)}
 figure{min-width:0;margin:0;position:relative;background:#142137}figure+figure{border-left:1px solid var(--edge)}
-figcaption{position:absolute;top:11px;left:12px;color:var(--muted);font-size:13px;pointer-events:none}
+figcaption{position:absolute;top:11px;left:12px;right:12px;color:var(--muted);font-size:13px;pointer-events:none}
+.visibility{display:block;width:fit-content;max-width:100%;margin-top:6px;padding:4px 7px;background:#0d1829e8;border:1px solid var(--edge);font-size:12px;pointer-events:auto}
+.visibility[data-state=visible]{color:#a9eaf6;border-color:#527988}
 .force-readout{position:absolute;left:10px;bottom:10px;padding:4px 7px;background:#0d1829e8;color:#a9eaf6;pointer-events:none}
 canvas{width:100%;aspect-ratio:1 / 1;display:block;touch-action:none}canvas.orbit{cursor:grab}canvas.orbit:active{cursor:grabbing}
 .legend{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;padding:12px 14px;color:var(--muted)}
@@ -93,8 +95,8 @@ canvas{width:100%;aspect-ratio:1 / 1;display:block;touch-action:none}canvas.orbi
     <button data-field="force" aria-pressed="false">Force magnitude</button>
   </div></div>
   <div id="hands" class="hands">
-    <figure><figcaption>L · anatomical left</figcaption><canvas width="480" height="480" aria-label="Left hand prediction"></canvas><output class="force-readout" hidden></output></figure>
-    <figure><figcaption>R · anatomical right</figcaption><canvas width="480" height="480" aria-label="Right hand prediction"></canvas><output class="force-readout" hidden></output></figure>
+    <figure><figcaption>L · anatomical left<span class="visibility mono" data-state="unavailable" title="Predicted probability that this hand is visible; visible when probability > 0.5">Visibility unavailable</span></figcaption><canvas width="480" height="480" aria-label="Left hand prediction"></canvas><output class="force-readout" hidden></output></figure>
+    <figure><figcaption>R · anatomical right<span class="visibility mono" data-state="unavailable" title="Predicted probability that this hand is visible; visible when probability > 0.5">Visibility unavailable</span></figcaption><canvas width="480" height="480" aria-label="Right hand prediction"></canvas><output class="force-readout" hidden></output></figure>
   </div>
   <div class="bar controls" id="mesh-controls" hidden>
     <label><input type="checkbox" id="left" checked> Left</label>
@@ -128,6 +130,7 @@ const video = $("video"), seek = $("seek"), status = $("video-status");
 const runSelect = $("run-select"), runStatus = $("run-status");
 const canvases = [...document.querySelectorAll("canvas")];
 const forceReadouts = [...document.querySelectorAll(".force-readout")];
+const visibilityReadouts = [...document.querySelectorAll(".visibility")];
 const arrowHits = canvases.map(() => []);
 const buttons = [...document.querySelectorAll("[data-field]")];
 const handControls = ["left", "right"].map($);
@@ -285,8 +288,22 @@ function inspectForce(event, hand) {
     readout.hidden = false;
   }
 }
+function drawVisibility() {
+  visibilityReadouts.forEach((readout, hand) => {
+    const probability = data.handVisibility?.[frame]?.[hand];
+    if (!Number.isFinite(probability)) {
+      readout.textContent = "Visibility unavailable";
+      readout.dataset.state = "unavailable";
+      return;
+    }
+    const visible = probability > 0.5;
+    readout.textContent = `Visibility ${(probability*100).toFixed(1)}% · ${visible ? "visible" : "not visible"}`;
+    readout.dataset.state = visible ? "visible" : "not-visible";
+  });
+}
 function draw() {
   if (!data) return;
+  drawVisibility();
   const modeLabel = meshes ? "MANO rest pose · drag to rotate" : "MANO vertex grids";
   const metric = data.metrics[field];
   const binary = field === "contact";
