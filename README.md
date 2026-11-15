@@ -1,3 +1,5 @@
+<div align="center">
+
 # TactoHand
 
 [English](README.md) | [简体中文](README.zh-CN.md)
@@ -13,6 +15,8 @@ Haiweng Xu · Hao Luo · Chuan Mao · Zongqing Lu
 [![Data & checkpoints](https://img.shields.io/badge/Data%20%26%20checkpoints-Release%20plan-orange.svg)](#release-plan)
 
 [Release Plan](#release-plan) · [Citation](#citation)
+
+</div>
 
 TactoHand predicts contact, proximity and 3D force at each of the 778 MANO
 vertices per hand from monocular RGB video. It combines frame features with
