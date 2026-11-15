@@ -183,6 +183,7 @@ const palettes = {
   force: [[0,[31,56,102]],[.3,[71,102,191]],[.6,[189,87,179]],[1,[255,163,74]]],
 };
 const contactThreshold = 0.5;
+const forceVectorMaxDistanceMm = 15;
 const contactColors = [[165,182,201],[255,102,87]];
 const contactColor = value => materialColor(contactColors[Number(value > contactThreshold)]);
 function bytes(value) {
@@ -285,12 +286,15 @@ function drawForceVectors(ctx, hand, {points,rotate}) {
   const mesh = meshes[hand];
   const {indices,values,normals,count} = mesh.vectors;
   const reference = data.vectorScale;
+  const distances = data.metrics.distance.values;
+  const offset = (frame*2+hand)*vertices;
   const factor = Number($("vector-gain").value) * ctx.canvas.width * zoom * .32 / reference;
   ctx.save();
   ctx.strokeStyle = ctx.fillStyle = "#66d9ee";
   ctx.lineWidth = 2;
   for (let i = frame*count; i < (frame+1)*count; i++) {
     const vertex = indices[i];
+    if (!(distances[offset+vertex] <= forceVectorMaxDistanceMm)) continue;
     if (rotate(...normals.subarray(vertex*3,vertex*3+3))[2] < -.1) continue;
     const components = values.subarray(i*3,i*3+3);
     const magnitude = Math.hypot(...components);
