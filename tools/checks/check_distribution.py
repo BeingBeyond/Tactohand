@@ -86,6 +86,7 @@ import training.configs
 from training.tactohand_wrench.nn.network import QueryForceWrenchNetwork
 from training.tactohand_wrench.runtime.checkpoints import load_network
 from core.data.resources import RESOURCE_ROOT
+from training.data.split_manifest import load_manifest
 with initialize_config_dir(config_dir=str(target / 'training/conf'), version_base='1.3'):
     cfg = compose(config_name='config', overrides=[
         'experiment=tactohand', 'data=tactohand', 'data.image_size=32',
@@ -95,8 +96,9 @@ with initialize_config_dir(config_dir=str(target / 'training/conf'), version_bas
         'model.wrench.query_layers=1', 'model.wrench.query_heads=3',
     ])
 assert RESOURCE_ROOT.is_relative_to(target)
-for name in ('contact_statistics_v5.npz', 'force_statistics_v5.npz'):
+for name in ('split_v1.json', 'h2o_official_split_v1.json'):
     assert (RESOURCE_ROOT / name).is_file(), name
+    assert load_manifest('core/resources/tactohand/' + name)['version'] == 1
 network = QueryForceWrenchNetwork(OmegaConf.to_container(cfg.model.wrench, resolve=True)).eval()
 with torch.no_grad():
     network.query_head.output.weight.normal_(std=0.01)
@@ -158,6 +160,7 @@ def main() -> int:
            if key not in {"PYTHONPATH", "PYTHONHOME", "RESUME_FROM", "IMAGE_SIZE"}}
     env.update(OMP_NUM_THREADS="1", MKL_NUM_THREADS="1", CUDA_VISIBLE_DEVICES="",
                HF_HUB_OFFLINE="1", PIP_DISABLE_PIP_VERSION_CHECK="1", PIP_NO_INDEX="1")
+    env['PROCESSED_ROOT'] = '/prepared/data'
 
     def run(name: str, command: list[str], cwd: Path) -> None:
         with (logs / f"{name}.log").open("w") as stream:
@@ -172,6 +175,21 @@ def main() -> int:
         files = scope["source_files"]()
         check_document_links(files)
         checks.append("source-document-links")
+        required = {
+            'core/resources/tactohand/split_v1.json',
+            'core/resources/tactohand/h2o_official_split_v1.json',
+            'training/conf/experiment/tactohand_256_fresh.yaml',
+            'scripts/data_checks/check_training_resources.py',
+            'scripts/data_checks/prepare_rigid_references.py',
+            'scripts/data_checks/build_training_statistics.py',
+            'scripts/training/recipes/tactohand/train_256.sh',
+        }
+        if not required.issubset(files):
+            raise ValueError(f'Missing formal training resources: {sorted(required - set(files))}')
+        if any(name.startswith('core/resources/tactohand/') and name.endswith('.npz')
+               for name in files):
+            raise ValueError('Numerical training priors must come from the dataset release')
+        checks.append('formal-training-source-scope')
         report["source_files"] = len(files)
         with tempfile.TemporaryDirectory(prefix="tactohand-distribution-") as temporary:
             base = Path(temporary)

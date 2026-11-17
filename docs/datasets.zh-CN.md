@@ -2,6 +2,33 @@
 
 [English](datasets.md) | [简体中文](datasets.zh-CN.md)
 
+<a id="download"></a>
+
+## 下载
+
+[百度网盘下载](https://pan.baidu.com/s/1K3em0o7q0EykbVuGLRGRBQ?pwd=th26)，提取码：`th26`，永久有效。
+专用发布目录包含 24 个带 tactile 标签的 prepared 数据集和配套训练辅助资源。
+通过各数据集的 `meta/info.json` 读取当前版本，将 `PROCESSED_ROOT` 指向下载后的 `data/`。
+选定的数据集应完整下载 `<dataset>_lerobot/`，保留 `meta/`、数据表、物体资源、
+视频流等文件的相对路径。发布数据已包含标签和手部裁剪，训练无需重新转换原始数据或生成标签。
+
+```text
+dataset/
+  README.md
+  data/<dataset>_lerobot/
+  training_resources/tactohand_v1.tar.gz
+```
+
+<a id="training-resources"></a>
+
+## 训练辅助资源
+
+从同一目录下载 `training_resources/tactohand_v1.tar.gz` 并解压到 `training_resources/`。
+解压后的 `tactohand_v1/` 包含接触与力损失统计、从头训练与模型输出归一化、
+多物体物理参考，压缩包约 2.10 GB。序列划分与物体 allowlist 随代码提供。
+MANO 模型文件和 DINOv3 ViT-L/16 backbone 权重需另行获取，不包含在此下载中。
+依赖安装见[安装](usage.zh-CN.md#setup)，解压、环境变量与验证命令见[训练配置](usage.zh-CN.md#训练)。
+
 ## 目录与读取
 
 `PROCESSED_ROOT` 指向 prepared 数据集的父目录，每个数据集对应一个
@@ -51,12 +78,18 @@ Prepared MANO 参数已包含来源坐标变换，通过 `core/geometry/mano_lay
 
 ## 数据检查
 
-完整处理前先运行有界检查：
+下载并解压辅助资源后，按[训练配置](usage.zh-CN.md#训练)设置环境变量，
+在仓库根目录运行发布资源检查：
 
 ```bash
-python scripts/data_checks/validate_labels_v5.py --help
-python scripts/data_checks/check_handcrop_consumer_contract.py --dataset dexycb
+python scripts/data_checks/check_training_resources.py \
+  --processed-root "$PROCESSED_ROOT" \
+  --resources-root "$TACTOHAND_TRAINING_RESOURCES"
 ```
 
-裁剪修改后，沿真实消费者路径验证 token/source 映射、内参、相机变换和视频帧选择。
+该检查验证统计量与 manifest 的绑定及物理参考的内容完整性。
+如修改裁剪，还需沿真实消费者路径验证 token/source 映射、内参、相机变换和视频帧选择。
 生成器内部自洽无法发现双方共用的索引错误。求解发布与标签失效规则见[标签格式](label_format.zh-CN.md)。
+
+训练统计和多物体物理参考位于与 `data/` 同级的 `training_resources/tactohand_v1`，
+随数据版本分发；见[训练配置](usage.zh-CN.md#训练)。

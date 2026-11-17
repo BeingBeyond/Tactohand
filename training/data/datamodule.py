@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import os
 import random
@@ -493,6 +494,14 @@ class SubstepForceDataModule(pl.LightningDataModule):
             stats = json.loads(Path(self.training_statistics_file).read_text())
             if stats["split_sha256"] != manifest_sha256(self.dataset_cfg["split_manifest_file"]):
                 raise ValueError("Training statistics belong to another split manifest")
+            roots = self.labels_root or self.processed_root
+            for name, expected in stats.get('prepared_manifest_sha256', {}).items():
+                if not roots:
+                    raise ValueError('Versioned training statistics require data.processed_root')
+                reader = processed_contract.reader_for(Path(roots) / f'{name}_lerobot')
+                actual = hashlib.sha256(reader.path(reader.manifest_path).read_bytes()).hexdigest()
+                if actual != expected:
+                    raise ValueError(f'{name}: training statistics belong to another dataset manifest')
             # JSON loses ndarray/scalar types. Restore the same contract as
             # the published-statistics branch before setup and batch collation.
             scale = np.asarray(stats["wrench_scale"], dtype=np.float32)

@@ -320,33 +320,19 @@ class EvalHarness:
             self._resolve_default_rigid_references()
 
     def _resolve_default_rigid_references(self) -> None:
-        from core.data import processed_compat
-
-        protocol = Path(__file__).resolve().parents[2] / "artifacts/training_protocol/rebuttal_v1"
-        reference_roots = {
-            "meta/index/manifest.native_timeline_20261112_sealed.json":
-                protocol / "native_timeline_20261112/rigid_references_sealed",
-            "meta/index/manifest.native_timeline_cleanup_20261112.json":
-                protocol / "native_timeline_cleanup_20261112/rigid_references",
-            "meta/index/manifest.tactile_compact_20261112.json":
-                protocol / "tactile_compact_20261112/rigid_references",
-        }
         configured = self.cfg.data.get("rigid_body_reference_root")
-        defaults = {protocol / "rigid_references", *reference_roots.values()}
-        if configured and Path(configured).resolve() not in defaults:
+        if configured and Path(configured).expanduser().is_dir():
             return
         prepared = self.cfg.data.get("labels_root") or self.cfg.data.get("processed_root")
         if not prepared:
             return
-        root = Path(prepared) / f"{self.datasets[0].removesuffix('_lerobot')}_lerobot"
-        if not (root / "meta/info.json").is_file() or not processed_compat.is_processed(root):
-            return
-        reader = processed_compat.reader_for(root)
-        reference_root = reference_roots.get(reader.manifest_path)
-        if reference_root is None:
-            return
-        OmegaConf.update(self.cfg, "data.rigid_body_reference_root",
-                         str(reference_root), merge=False)
+        resource_root = os.environ.get("TACTOHAND_TRAINING_RESOURCES")
+        resources = (Path(resource_root).expanduser() if resource_root else
+                     Path(prepared).expanduser().resolve().parent / "training_resources/tactohand_v1")
+        reference_root = resources / "rigid_references"
+        if reference_root.is_dir():
+            OmegaConf.update(self.cfg, "data.rigid_body_reference_root",
+                             str(reference_root), merge=False)
 
     # -- construction -----------------------------------------------------
 

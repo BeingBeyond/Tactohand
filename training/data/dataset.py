@@ -33,7 +33,7 @@ from core.tactile_labels.trajectory_physics import solver_gravity_world
 from core.tactile_labels.processed_training import episode_metadata, view_metadata
 from core.tactile_labels.mano_tracks import solver_vertex_tracks
 from core.tactile_labels.native_timeline import (
-    read_native_timeline, target_spans, validate_native_timeline,
+    read_native_timeline, target_spans, validate_native_timeline, timeline_revision,
 )
 from core.tactile_labels.schema import (
     FLAG_CONTACT_VALID, FLAG_FORCE_VALID, FLAG_LEFT_PRESENT,
@@ -230,7 +230,8 @@ class LabelStreamDataset(Dataset):
         self.native_solver_timeline = (
             self.native_timeline_root is not None or self._native_reader is not None
             or self._standalone_native_revision is not None)
-        self._native_revision = (reader.revision if reader is not None and self.native_solver_timeline
+        self._native_revision = (timeline_revision(reader) if self._native_reader is not None
+                                 else reader.revision if reader is not None and self.native_solver_timeline
                                  else self._standalone_native_revision)
         if not self.native_solver_timeline:
             raise ValueError(f"{self.labels_root}: a native solver timeline is required")
@@ -724,7 +725,7 @@ class LabelStreamDataset(Dataset):
                 else:
                     body_parameters = {f'body_{key}': value for key, value in recovered.items()}
                     body_parameters['body_ready'] = np.asarray(True)
-                    body_parameters['body_recovery_report'] = np.asarray(json.dumps(metadata['report']))
+                    body_parameters['body_recovery_report'] = np.asarray(json.dumps(metadata.get('report', {})))
         return {
             "force_geometry_available": np.asarray(not skip_force_geometry),
             **static_parameters,

@@ -121,18 +121,57 @@ Keep the SSH tunnel open while using the dashboard.
 
 ## Training
 
-Prepare [datasets](datasets.md), backbone weights and MANO, then inspect the
-composed configuration before launching. This branch defaults to
-`experiment=tactohand data=tactohand` (256px).
+Prepare [datasets](datasets.md), backbone weights and MANO. The default
+`experiment=tactohand_256 data=tactohand` is the formal 256px, 1,000-epoch
+configuration. `experiment=tactohand_256_fresh` provides the 500-epoch fresh
+initialization configuration. The 1,000-epoch configuration accepts optional
+weights-only initialization through `RESUME_FROM`.
+
+Download `training_resources/tactohand_v1.tar.gz` from the same dataset release
+and extract it using this layout:
+
+```text
+<collection>/data/<dataset>_lerobot/
+<collection>/training_resources/tactohand_v1/
+  statistics/{scales.json,output_scales.json,contact.npz,force.npz}
+  rigid_references/<dataset>_lerobot/episode_*/{manifest.json,bodies.parquet}
+```
 
 ```bash
-export PROCESSED_ROOT=/path/to/prepared
+mkdir -p /path/to/collection/training_resources
+tar -xzf tactohand_v1.tar.gz -C /path/to/collection/training_resources
+export PROCESSED_ROOT=/path/to/collection/data
+export TACTOHAND_TRAINING_RESOURCES=/path/to/collection/training_resources/tactohand_v1
 export PRETRAINED_PATH=/path/to/backbone/model.safetensors
 export MANO_ASSETS_ROOT=/path/to/mano
+python scripts/data_checks/check_training_resources.py \
+  --processed-root "$PROCESSED_ROOT" --resources-root "$TACTOHAND_TRAINING_RESOURCES"
 tactohand-train --cfg job --resolve
 mkdir -p logs
-nohup tactohand-train > logs/train.log 2>&1 &
+nohup env GPUS=8 bash scripts/training/recipes/tactohand/train_256.sh \
+  > logs/train.log 2>&1 < /dev/null &
 ```
+
+The repository contains sequence splits and the object allowlist. Statistics
+and rigid references are distributed with the dataset and bind its exact
+manifest hashes. `output_scales.json` fixes the trained model output normalization;
+`scales.json` contains the label-fitted normalization for fresh initialization.
+The default uses 256px inputs and batch size 7 per GPU.
+Another dataset publication needs matching bindings, even
+when numerical labels are unchanged. Use a fresh output directory when
+rebuilding resources:
+
+```bash
+python scripts/data_checks/build_training_statistics.py \
+  --processed-root "$PROCESSED_ROOT" --output /path/to/new_resources/statistics
+python scripts/data_checks/prepare_rigid_references.py \
+  --processed-root "$PROCESSED_ROOT" --output-root /path/to/new_resources/rigid_references \
+  --log-root logs/rigid_references --workers 8
+```
+
+The statistics CLI resumes per episode; the physical-reference CLI resumes
+verified episode payloads and stores independent logs. Long preparation runs
+should be launched with `nohup` and redirected logs.
 
 Append Hydra overrides for hardware, batch size or experiments. To initialize
 from task weights while resetting optimizer, scheduler and epoch state, pass

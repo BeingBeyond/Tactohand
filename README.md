@@ -14,7 +14,8 @@ Haiweng Xu · Hao Luo · Chuan Mao · Zongqing Lu
 [![Project Website](https://img.shields.io/badge/Project-Website-0072B2.svg)](https://zhenqis123.github.io/tactohand-site/)
 [![Hugging Face Demo](https://img.shields.io/badge/Hugging%20Face-Demo-yellow.svg)](https://huggingface.co/spaces/zhenqis123/TactoHand)
 [![Checkpoints](https://img.shields.io/badge/Checkpoints-Available-brightgreen.svg)](docs/usage.md#prediction-viewer)
-[![Data](https://img.shields.io/badge/Data-Coming%20soon-orange.svg)](#release-plan)
+[![Data](https://img.shields.io/badge/Data-Available-brightgreen.svg)](https://pan.baidu.com/s/1K3em0o7q0EykbVuGLRGRBQ?pwd=th26)
+[![Training Resources](https://img.shields.io/badge/Training-Resources-brightgreen.svg)](docs/datasets.md#training-resources)
 
 [Release Plan](#release-plan) · [Citation](#citation)
 
@@ -71,7 +72,8 @@ performs inference. RGB-only inference does not require datasets or MANO geometr
 - [x] Release the project website.
 - [x] Release the source code.
 - [x] Release pretrained checkpoints ([download](docs/usage.md#prediction-viewer)).
-- [ ] Release the dataset.
+- [x] Release the prepared dataset: 24 sources ([Baidu Netdisk](https://pan.baidu.com/s/1K3em0o7q0EykbVuGLRGRBQ?pwd=th26); access code: `th26`).
+- [x] Release matching training resources ([setup](docs/datasets.md#training-resources)).
 
 ## License
 

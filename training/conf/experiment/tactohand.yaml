@@ -36,14 +36,13 @@ loss:
     # Active/zero split: plain frame-level MSE sat at the all-zero predictor
     # floor (8.8% nonzero entries overall, 19.6% on engaged frames).  Active
     # class = clamped target magnitude > 0.05 N, weighted per-vertex by CB
-    # counts from core/resources/tactohand/force_statistics_v5.npz (rebuild with
-    # scripts/dataset_maintenance/labels/build_force_statistics_v5.py); zero class
+    # counts from the versioned training resource bundle; zero class
     # keeps the pre-contact phantom-force suppression at lambda=0.1.
     force_active_zero_split: true
     force_active_threshold_n: 0.05
     force_zero_weight: 0.1
     force_active_huber_delta_n: 0.05
-    force_statistics_path: core/resources/tactohand/force_statistics_v5.npz
+    force_statistics_path: ${oc.env:TACTOHAND_TRAINING_RESOURCES,${data.processed_root}/../training_resources/tactohand_v1}/statistics/force.npz
     # Raw local-frame diagnostic path (overfit probes, default off): trains
     # the head's vertex-local components with plain MSE against the reader's
     # vertex_force_local_30hz targets — no engagement gate, no local->camera
@@ -99,7 +98,7 @@ loss:
     force_gate: true
     proximity_weight: 4.0
   haco:
-    # Current mesh loss uses bundled counts; legacy HACO assets are optional.
+    # Mesh loss reads the dataset release's counts; HACO assets are optional.
     contact_data_path: null
     contact_means_path: null
     v_regressor_336_path: null
@@ -109,8 +108,8 @@ loss:
     # Conditional per-vertex class counts from labels-v5 itself (engaged
     # hand-frames; P(contact|engaged)=0.1405 pooled) — matches the stage-2
     # VCB population.  Rebuild after label regeneration with
-    # scripts/dataset_maintenance/labels/build_contact_statistics_v5.py.
-    contact_statistics_path: core/resources/tactohand/contact_statistics_v5.npz
+    # scripts/data_checks/build_training_statistics.py.
+    contact_statistics_path: ${oc.env:TACTOHAND_TRAINING_RESOURCES,${data.processed_root}/../training_resources/tactohand_v1}/statistics/contact.npz
 
 training:
   # Plain DDP: the loss graph keeps every parameter connected on every batch

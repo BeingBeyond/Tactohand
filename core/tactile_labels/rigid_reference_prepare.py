@@ -8,7 +8,7 @@ from core.data import processed_compat as contract
 from core.data.camera import hmr_c2w
 from core.tactile_labels.decode import read_episode_columns
 from core.tactile_labels.mano_tracks import solver_vertex_tracks
-from core.tactile_labels.native_timeline import validate_native_timeline
+from core.tactile_labels.native_timeline import validate_native_timeline, timeline_revision
 from core.tactile_labels.rigid_bodies import recover_body_payload, unrecovered_force_rows
 from core.tactile_labels.rigid_reference_store import write_reference
 from core.tactile_labels.schema import FLAG_FORCE_VALID, FLAG_LEFT_PRESENT, FLAG_RIGHT_PRESENT
@@ -22,7 +22,7 @@ def prepare_episode(root: Path, labels: dict, output_root: Path, *, mano_chunk=1
     reader = contract.reader_for(root)
     timeline = validate_native_timeline(
         reader.read_episode('tactile.timeline', int(labels['episode_index']), 'shared'),
-        labels, reader.revision)
+        labels, timeline_revision(reader))
     target_slots = timeline['target_object'].fill_null(-1).to_numpy()
     tactile = read_episode_columns(root, labels['tactile_groups'], ['source_position', 'flags'])
     force = read_episode_columns(root, labels['force_groups'], [

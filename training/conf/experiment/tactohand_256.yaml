@@ -1,0 +1,328 @@
+# @package _global_
+# Formal 256px training configuration.
+defaults:
+- tactohand
+- _self_
+seed: 42
+task: tactohand_wrench
+resume_from: ${oc.env:RESUME_FROM,null}
+resume_weights_only: true
+resume_exclude_key_prefixes: []
+diagnostics:
+  distributed_trace:
+    enabled: false
+    stack_dump_interval_s: 120
+model:
+  wrench:
+    backbone: vit_large_patch16_dinov3
+    backbone_img_size: 256
+    pretrained: true
+    pretrained_path: ${oc.env:PRETRAINED_PATH,assets/pretrained/visual_encoder/timm-vit_large_patch16_dinov3.lvd1689m/model.safetensors}
+    freeze_backbone: false
+    gradient_checkpointing: false
+    temporal_layers: 6
+    temporal_heads: 8
+    temporal_fusion: true
+    dropout: 0.0
+    output_mode: vertex_force
+    query_heads: 8
+    query_layers: 2
+    output_substeps: 1
+    hands: 2
+    predict_contact_proximity: true
+    predict_hand_visibility: true
+loss:
+  haco:
+    contact_data_path: null
+    contact_means_path: null
+    v_regressor_336_path: null
+    v_regressor_84_path: null
+    mano_faces_path: null
+    j_regressor_path: null
+    beta: 0.9999
+    reg_weight: 0.1
+    smooth_weight: 1.0
+    contact_statistics_path: ${oc.env:TACTOHAND_TRAINING_RESOURCES,${data.processed_root}/../training_resources/tactohand_v1}/statistics/contact.npz
+  wrench:
+    type: l2
+    point_force_weight: 20.0
+    wrench_force_weight: 0.0
+    wrench_torque_weight: 0.0
+    force_active_zero_split: true
+    force_active_threshold_n: 0.05
+    force_zero_weight: 0.1
+    force_active_huber_delta_n: 0.05
+    force_statistics_path: ${oc.env:TACTOHAND_TRAINING_RESOURCES,${data.processed_root}/../training_resources/tactohand_v1}/statistics/force.npz
+    raw_local_mse: false
+    point_force_clamp_n: 20.0
+    wrench_force_clamp_n: 50.0
+    wrench_torque_clamp_nm: 10.0
+  rollout:
+    implementation: graphed_fused3
+    graph_extra_body_slots: 0
+    graph_flat_substep: false
+    weight: 0.0005
+    start_epoch: 0
+    horizon_10hz: 4
+    position_scale_m: 0.01
+    rotation_scale_rad: 0.1
+    position_weight: 1.0
+    rotation_weight: 1.0
+    joint_weight: 1.0
+    warmup_epochs: 0
+  contact_proximity:
+    contact_weight: 1.0
+    gate_weight: 0.05
+    force_gate: true
+    proximity_weight: 4.0
+  hand_visibility:
+    weight: 0.05
+training:
+  max_epochs: 1000
+  check_val_every_n_epoch: 1
+  val_check_interval_steps: 0
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 4
+  precision: bf16-mixed
+  matmul_precision: high
+  optimizer:
+    name: adamw
+    lr: 2.0e-05
+    backbone_lr_scale: 1.0
+    weight_decay: 0.0001
+    betas:
+    - 0.9
+    - 0.999
+    fused: true
+    foreach: true
+    capturable: false
+    backbone_lr: 2.0e-05
+  scheduler:
+    name: cosine
+    warmup_epochs: 0
+    min_lr: 2.0e-06
+    min_lr_ratio: 0.1
+    warmup_steps: 0
+  compile:
+    enabled: true
+    mode: default
+    backend: auto
+    fullgraph: false
+    dynamic: false
+    modules:
+    - network.temporal
+    - network.query_head
+    dynamic_modules: []
+  accelerator: gpu
+  devices: 8
+  num_nodes: 1
+  strategy: ddp
+  gpu_ids: null
+validation:
+  per_dataset_metrics:
+    enabled: false
+    log_keys:
+    - '*'
+logging:
+  log_every_n_steps: 1
+  verbosity: normal
+  save_dir: ./logs
+  console:
+    progress_every_n_steps: 20
+  tensorboard:
+    enabled: true
+    level: core
+    scalar_every_n_steps: 1
+    flush_secs: 10
+  visualization:
+    enabled: false
+    outputs:
+    - image
+    - handcrop_image
+    - gt_contact_glb
+    - pred_contact_glb
+    - metadata
+    default_mano_when_missing: false
+  device_stats:
+    enabled: false
+  wandb:
+    enabled: false
+    log_model: false
+  project: video2contact
+  name: tactohand
+eval:
+  checkpoint: null
+  output_json: null
+  datasets: []
+  limit_batches: 0
+  no_progress: false
+checkpoint:
+  dirpath: ./checkpoints
+  monitor: epoch/objective/val/total
+  mode: min
+  save_top_k: 1
+  save_last: true
+  stream_local_writes: true
+  enable_version_counter: false
+  additional_monitors: []
+  filename: best_val
+profiling:
+  enabled: false
+  print_interval_steps: 100
+  window_size: 50
+  warmup_steps: 1
+  sync_cuda: true
+  log_to_logger: false
+data:
+  _target_: training.data.datamodule.SubstepForceDataModule
+  root: ${data.processed_root}/dexycb_lerobot
+  processed_root: ${oc.env:PROCESSED_ROOT}
+  labels_root: null
+  datasets:
+  - arctic
+  - decaf
+  - dexycb
+  - h2o3d
+  - h2o
+  - hi4d
+  - hic
+  - ho3dv2
+  - ho3dv3
+  - hograspnet
+  - hoi4d
+  - hot3d
+  - interhand26m
+  - oakink-v1
+  - oakink-v2
+  - prox
+  - reinterhand
+  - rich
+  - taco
+  - show3d
+  - mow
+  - obman
+  - gigahands
+  val_datasets:
+  - dexycb
+  - arctic
+  - h2o
+  - interhand26m
+  - ho3dv2
+  - hot3d
+  - h2o3d
+  - ho3dv3
+  val_split_by_dataset:
+    hocap_multiview: test
+    dexycb: val
+    arctic: val
+    h2o: val
+    ho3dv2: test
+    hot3d: test
+    h2o3d: test
+    ho3dv3: test
+  split_manifest_file: core/resources/tactohand/split_v1.json
+  split_manifest_files_by_dataset:
+    h2o: core/resources/tactohand/h2o_official_split_v1.json
+  training_statistics_file: ${oc.env:TACTOHAND_TRAINING_RESOURCES,${data.processed_root}/../training_resources/tactohand_v1}/statistics/output_scales.json
+  rigid_body_reference_root: ${oc.env:TACTOHAND_TRAINING_RESOURCES,${data.processed_root}/../training_resources/tactohand_v1}/rigid_references
+  require_rigid_body_references: true
+  rollout_exclude_episodes:
+    hot3d:
+    - 155
+  val_views_by_dataset:
+    arctic:
+    - ego_view
+  object_allowlist_file: core/resources/tactohand/gigahands_tracking_good_objects.allowlist.json
+  contact_only_datasets:
+  - gigahands
+  handcrop_datasets:
+  - hi4d
+  - prox
+  - rich
+  handcrop_both_hands: false
+  target_fps: 10.0
+  sequence_length: 32
+  image_size: 256
+  video_backend: torchcodec
+  video_cache_size: 96
+  torchcodec_seek_mode: cfr_timestamp
+  torchcodec_num_ffmpeg_threads: 1
+  padding_mode: static_edge
+  padding_placement: right
+  padding_loss_weight: 1.0
+  train_split: train
+  val_split: val
+  views: null
+  train_max_episodes: null
+  val_max_episodes: null
+  batch_size: 7
+  num_workers: 8
+  prefetch_factor: 2
+  pin_memory: true
+  persistent_workers: true
+  sampler_mode: sequential_by_video
+  dataset_sampling_power: 1.0
+  dataset_sampling: power
+  dataset_weights:
+    dexycb: 2.0
+    hoi4d: 0.5
+    oakink-v2: 0.5
+    decaf: 0.1
+    interhand26m: 0.02
+    reinterhand: 0.1
+    hograspnet: 0.05
+    obman: 0.05
+    gigahands: 0.05
+    mow: 4.0
+  shuffle_video_order: true
+  shuffle_window_order: true
+  photometric_augment: true
+  shuffle_dataset_order: true
+  window_stride: 32
+  train_window_mode: phase_offset
+  train_clip_origin: random_source_frame
+  val_clip_origin: random_source_frame
+  native_timeline_root: null
+  val_window_mode: fixed
+  episode_subject_filter: ''
+  window_sampling_seed: 42
+  window_include_tail: true
+  uint8_images: true
+  deduplicate_batch_frames: true
+  target_mode: applied
+  point_force_scale_source: nonzero_rms
+  epoch_window_fraction: 0.5
+  vertex_force_frame: vertex_local
+  predict_both_hands: true
+  proximity_tau: 20.0
+  pad_label_mode: repeat_edge
+  episode_cache_bytes: 536870912
+  training_data_fast_path: true
+  window_scoped_geometry_datasets:
+  - hot3d
+  supervise_hand_visibility: true
+  point_episode_cache_size: 2
+  substep_episode_cache_size: 2
+metrics:
+  rollout_integrator: implicit_midpoint
+  implicit_iterations: 6
+  rollout_horizons:
+  - 1
+  - 2
+  - 4
+  - 8
+  rollout_subsets:
+  - all
+  - real_only
+  - padding_only
+  - boundary_crossing
+  train_max_batches: 0
+  val_max_batches: null
+  explosion_linear_speed_m_s: 100.0
+  explosion_angular_speed_rad_s: 1000.0
+  tensorboard_rollout_horizons:
+  - 4
+  tensorboard_rollout_metrics:
+  - position_ade_m
+  - rotation_ade_rad
+  - explosion_rate

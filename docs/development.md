@@ -39,16 +39,16 @@ operations. Platform launchers must wait for the real task and return its exit
 code. Long jobs need separate logs, incremental outputs and completion markers.
 
 ```bash
-tools/run_checks.sh --quick
+python tools/checks/check_resources.py
 python3 -S tools/checks/test_inference_dashboard.py
 python tools/checks/test_inference_visibility.py
 python tools/checks/test_inference_server.py
 ```
 
-`--quick` checks shell syntax, tracked-file hygiene and dependencies. `--full`
-adds launcher contracts and pyright. Prediction/resource/rollout checks run
-separately; select the checks relevant to the change. Use tiny subsets for
-data-dependent checks and verify actual consumers after geometry/crop changes.
+The resource check exercises bundled protocols and external-statistics consumers.
+Prediction and rollout checks run separately; select checks relevant to the
+change. Use tiny subsets for data-dependent checks and verify actual consumers
+after geometry/crop changes.
 
 ## Packaging
 
@@ -84,3 +84,7 @@ contracts change. Keep English and Chinese guides aligned.
 History retains retired recipes and investigation notes. Current workflow
 instructions belong in [usage](usage.md), data conventions in
 [datasets](datasets.md).
+
+Training protocols and curation belong in `core/resources/tactohand/`. Generated
+statistics and rigid-reference payloads belong to dataset releases. Preparation
+and verification CLIs live in `scripts/data_checks/`; source packaging includes them.

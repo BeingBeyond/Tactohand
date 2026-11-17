@@ -51,8 +51,7 @@ def write_reference(reference_root, root: Path, labels: dict, payload=None, erro
     path.parent.mkdir(parents=True, exist_ok=True)
     value = {'format': FORMAT, 'source_key': source_key(root, labels),
              'episode': int(labels['episode_index']), 'object_ids': labels['object_ids'],
-             'status': 'rejected' if error else 'ready', 'error': error,
-             'force_labels_unchanged': True}
+             'status': 'rejected' if error else 'ready', 'error': error}
     if payload is not None:
         count = len(payload['owner'])
         columns = {'solver_transition': pa.array(np.arange(count), type=pa.int32())}
@@ -68,9 +67,7 @@ def write_reference(reference_root, root: Path, labels: dict, payload=None, erro
         pq.write_table(pa.table(columns), temporary, compression='zstd', row_group_size=256)
         temporary.replace(destination)
         value.update(rows=count, shapes=shapes, payload='bodies.parquet',
-                     payload_sha256=hashlib.sha256(destination.read_bytes()).hexdigest(),
-                     report=payload['recovery_report'],
-                     state_layout='solver-row start states with addressable closing rows')
+                     payload_sha256=hashlib.sha256(destination.read_bytes()).hexdigest())
     temporary = path.with_suffix('.pending')
     temporary.write_text(json.dumps(value, indent=2) + '\n')
     temporary.replace(path)

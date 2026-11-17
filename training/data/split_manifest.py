@@ -6,10 +6,11 @@ import json
 from pathlib import Path
 
 from core.data import processed_compat as contract
+from core.data.resources import resolve_resource_path
 
 
 def load_manifest(path: str | Path) -> dict:
-    document = json.loads(Path(path).read_text())
+    document = json.loads(resolve_resource_path(path).read_text())
     if document.get('version') != 1:
         raise ValueError('Unsupported split manifest version')
     for name, mapping in document['datasets'].items():
@@ -37,4 +38,4 @@ def select_manifest_episodes(root: Path, path: str, split: str) -> set[int] | No
 
 
 def manifest_sha256(path: str | Path) -> str:
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    return hashlib.sha256(resolve_resource_path(path).read_bytes()).hexdigest()

@@ -167,6 +167,7 @@ def _install(staging, root):
         indices.append(_index_spec(path, table, 'episode_index'))
     manifest['indices']['episodes'] = indices
     manifest['modalities']['tactile']['components'] = components
+    components['timeline']['source_revision'] = revision
     manifest['contracts']['beingh']['labels'] = {
         key: value for key, value in declared.items() if key != 'timeline_revision'}
     if 'mano_dependent_labels' in staged_info:

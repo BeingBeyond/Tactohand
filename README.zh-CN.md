@@ -14,7 +14,8 @@ Haiweng Xu · Hao Luo · Chuan Mao · Zongqing Lu
 [![Project Website](https://img.shields.io/badge/Project-Website-0072B2.svg)](https://zhenqis123.github.io/tactohand-site/)
 [![Hugging Face Demo](https://img.shields.io/badge/Hugging%20Face-Demo-yellow.svg)](https://huggingface.co/spaces/zhenqis123/TactoHand)
 [![Checkpoints](https://img.shields.io/badge/Checkpoints-Available-brightgreen.svg)](docs/usage.zh-CN.md#预测看板)
-[![Data](https://img.shields.io/badge/Data-Coming%20soon-orange.svg)](#release-plan)
+[![Data](https://img.shields.io/badge/Data-Available-brightgreen.svg)](https://pan.baidu.com/s/1K3em0o7q0EykbVuGLRGRBQ?pwd=th26)
+[![Training Resources](https://img.shields.io/badge/Training-Resources-brightgreen.svg)](docs/datasets.zh-CN.md#training-resources)
 
 [发布计划](#release-plan) · [引用](#citation)
 
@@ -70,7 +71,8 @@ clone 后即可使用。
 - [x] 发布项目网站。
 - [x] 发布源代码。
 - [x] 发布预训练权重（[下载入口](docs/usage.zh-CN.md#预测看板)）。
-- [ ] 发布数据集。
+- [x] 发布 prepared 数据集，共 24 个数据源（[百度网盘](https://pan.baidu.com/s/1K3em0o7q0EykbVuGLRGRBQ?pwd=th26)，提取码：`th26`）。
+- [x] 发布配套训练辅助资源（[使用说明](docs/datasets.zh-CN.md#training-resources)）。
 
 ## 许可证
 

@@ -27,6 +27,11 @@ Compact manifests declare `row_metadata: tactile.timeline`; readers reconstruct
 logical fields from that table. The three components align by episode and
 solver row. Sparse static data may declare `solver_index_column: source_position`.
 
+Metadata-only upload publications retain the payload's timeline revision through
+`upload_profile.source_revision`. A rewritten timeline declares its own
+`source_revision` in the component. Readers validate against that payload revision;
+statistics and physical references still bind the full published manifest hash.
+
 - `contact` is uint8; `signed_distance` is float16 metres clipped to ±0.25 m.
   Rows contain 778 left vertices followed by 778 right vertices.
 - `tactile_flags` bits 0/1 encode left/right presence; bits 2/3 encode

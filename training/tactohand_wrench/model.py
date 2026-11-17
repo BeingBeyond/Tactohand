@@ -120,10 +120,13 @@ class SubstepForceModel(pl.LightningModule):
                     "loss.wrench.raw_local_mse and force_active_zero_split "
                     "are mutually exclusive")
         if self.force_active_zero_split and initialize_losses:
+            statistics_path = loss_cfg.get("force_statistics_path")
+            if not statistics_path:
+                raise ValueError(
+                    "Set loss.wrench.force_statistics_path to the dataset release's "
+                    "training_resources/tactohand_v1/statistics/force.npz")
             self._load_force_vertex_weights(
-                str(loss_cfg.get(
-                    "force_statistics_path",
-                    "core/resources/tactohand/force_statistics_v5.npz")),
+                str(statistics_path),
                 beta=float(loss_cfg.get("force_cb_beta", 0.9999)),
                 count_floor=float(loss_cfg.get("force_cb_clamp", 100.0)))
         weights = (self.point_force_weight, self.wrench_force_weight,

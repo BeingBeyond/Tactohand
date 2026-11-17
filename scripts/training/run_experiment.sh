@@ -21,9 +21,9 @@ Options:
   -h, --help        Show this help
 
 Examples:
-  bash scripts/training/run_experiment.sh tactohand_384
-  bash scripts/training/run_experiment.sh tactohand_384 --name dexycb_smoke data.datasets=[dexycb] training.gpu_ids='[0]'
-  bash scripts/training/run_experiment.sh tactohand_384 data.batch_size=16 training.strategy=auto
+  bash scripts/training/run_experiment.sh tactohand_256
+  bash scripts/training/run_experiment.sh tactohand_256 --name dexycb_smoke data.datasets=[dexycb] training.gpu_ids='[0]'
+  bash scripts/training/run_experiment.sh tactohand_256 data.batch_size=16 training.strategy=auto
 
 Artifacts:
   logs/<timestamp>_<experiment>[_name]/

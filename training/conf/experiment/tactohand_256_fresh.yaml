@@ -1,0 +1,162 @@
+# @package _global_
+# Formal fresh-initialization training configuration.
+defaults:
+- tactohand
+- _self_
+resume_from: null
+resume_weights_only: false
+resume_exclude_key_prefixes: []
+data:
+  image_size: 256
+  batch_size: 7
+  point_force_scale_source: rows_rms
+  training_data_fast_path: true
+  num_workers: 8
+  prefetch_factor: 2
+  torchcodec_num_ffmpeg_threads: 1
+  torchcodec_seek_mode: cfr_timestamp
+  _target_: training.data.datamodule.SubstepForceDataModule
+  root: ${data.processed_root}/dexycb_lerobot
+  processed_root: ${oc.env:PROCESSED_ROOT}
+  labels_root: null
+  rigid_body_reference_root: ${oc.env:TACTOHAND_TRAINING_RESOURCES,${data.processed_root}/../training_resources/tactohand_v1}/rigid_references
+  require_rigid_body_references: true
+  rollout_exclude_episodes:
+    hot3d:
+    - 155
+  datasets:
+  - arctic
+  - decaf
+  - dexycb
+  - h2o3d
+  - h2o
+  - hi4d
+  - hic
+  - ho3dv2
+  - ho3dv3
+  - hograspnet
+  - hoi4d
+  - hot3d
+  - interhand26m
+  - oakink-v1
+  - oakink-v2
+  - prox
+  - reinterhand
+  - rich
+  - taco
+  - show3d
+  - mow
+  - obman
+  - gigahands
+  val_datasets:
+  - dexycb
+  - arctic
+  val_split_by_dataset:
+    dexycb: val
+    arctic: val
+  object_allowlist_file: core/resources/tactohand/gigahands_tracking_good_objects.allowlist.json
+  contact_only_datasets:
+  - gigahands
+  handcrop_datasets:
+  - hi4d
+  - prox
+  - rich
+  handcrop_both_hands: false
+  target_fps: 10.0
+  sequence_length: 32
+  video_backend: torchcodec
+  video_cache_size: 96
+  padding_mode: static_edge
+  padding_placement: right
+  padding_loss_weight: 1.0
+  train_split: train
+  val_split: val
+  views: null
+  train_max_episodes: null
+  val_max_episodes: null
+  pin_memory: true
+  persistent_workers: true
+  sampler_mode: sequential_by_video
+  dataset_sampling_power: 1.0
+  dataset_sampling: power
+  dataset_weights:
+    dexycb: 2.0
+    hoi4d: 0.5
+    oakink-v2: 0.5
+    decaf: 0.1
+    interhand26m: 0.02
+    reinterhand: 0.1
+    hograspnet: 0.05
+    obman: 0.05
+    gigahands: 0.05
+    mow: 4.0
+  shuffle_video_order: true
+  shuffle_window_order: true
+  photometric_augment: true
+  shuffle_dataset_order: true
+  window_stride: 32
+  train_window_mode: phase_offset
+  val_window_mode: fixed
+  episode_subject_filter: ''
+  window_sampling_seed: 42
+  window_include_tail: true
+  uint8_images: true
+  deduplicate_batch_frames: true
+  target_mode: applied
+  epoch_window_fraction: 0.2
+  vertex_force_frame: vertex_local
+  predict_both_hands: true
+  proximity_tau: 20.0
+  pad_label_mode: repeat_edge
+  episode_cache_bytes: 536870912
+  window_scoped_geometry_datasets:
+  - hot3d
+  point_episode_cache_size: 2
+  substep_episode_cache_size: 2
+  split_manifest_file: core/resources/tactohand/split_v1.json
+  val_views_by_dataset:
+    arctic:
+    - ego_view
+  training_statistics_file: ${oc.env:TACTOHAND_TRAINING_RESOURCES,${data.processed_root}/../training_resources/tactohand_v1}/statistics/scales.json
+model:
+  wrench:
+    gradient_checkpointing: false
+    pretrained_path: ${oc.env:PRETRAINED_PATH,assets/pretrained/visual_encoder/timm-vit_large_patch16_dinov3.lvd1689m/model.safetensors}
+    backbone_img_size: 256
+training:
+  max_epochs: 500
+  accumulate_grad_batches: 60
+  precision: bf16-mixed
+  matmul_precision: high
+  optimizer:
+    lr: 1.0e-05
+    backbone_lr: 1.0e-05
+  scheduler:
+    name: cosine
+    min_lr: 1.0e-06
+    min_lr_ratio: 0.1
+    warmup_steps: 0
+    warmup_epochs: 0
+  devices: 8
+  gpu_ids: null
+  num_nodes: 1
+  strategy: ddp
+loss:
+  rollout:
+    weight: 0.001
+    start_epoch: 0
+    warmup_epochs: 0
+  haco:
+    contact_statistics_path: ${oc.env:TACTOHAND_TRAINING_RESOURCES,${data.processed_root}/../training_resources/tactohand_v1}/statistics/contact.npz
+  wrench:
+    point_force_weight: 20.0
+    force_statistics_path: ${oc.env:TACTOHAND_TRAINING_RESOURCES,${data.processed_root}/../training_resources/tactohand_v1}/statistics/force.npz
+checkpoint:
+  monitor: epoch/objective/val/total
+  mode: min
+  save_top_k: 1
+  save_last: true
+  filename: best_val
+  additional_monitors: []
+  enable_version_counter: false
+  stream_local_writes: true

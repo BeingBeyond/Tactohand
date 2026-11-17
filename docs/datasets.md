@@ -2,6 +2,35 @@
 
 [English](datasets.md) | [简体中文](datasets.zh-CN.md)
 
+## Download
+
+[Download from Baidu Netdisk](https://pan.baidu.com/s/1K3em0o7q0EykbVuGLRGRBQ?pwd=th26) (access code: `th26`; no expiry).
+The dedicated release contains 24 prepared datasets with tactile labels and the
+matching training resources. Each dataset's `meta/info.json` selects its active
+version. Point `PROCESSED_ROOT` at the downloaded `data/` directory.
+Download each selected `<dataset>_lerobot/` directory in full, preserving its
+relative paths, including `meta/`, tables, object resources and video streams.
+The published data already contains labels and hand crops; no raw-data conversion
+or label regeneration is needed for training.
+
+```text
+dataset/
+  README.md
+  data/<dataset>_lerobot/
+  training_resources/tactohand_v1.tar.gz
+```
+
+## Training resources
+
+Download `training_resources/tactohand_v1.tar.gz` from the same folder and extract
+it into `training_resources/`. The extracted `tactohand_v1/` contains contact and
+force loss priors, fresh-training and model-output normalization, and multi-body
+physical references (about 2.10 GB compressed). Sequence splits and the object
+allowlist ship with the code. MANO model files and DINOv3 ViT-L/16 backbone
+weights must be obtained separately; they are not included in this download.
+See the [installation](usage.md#setup) and [training setup](usage.md#training)
+for dependencies, extraction, environment variables and validation commands.
+
 ## Layout and readers
 
 Set `PROCESSED_ROOT` to a parent containing one `<dataset>_lerobot` directory
@@ -58,14 +87,21 @@ fisheye pixels are not interchangeable; see the [label format](label_format.md).
 
 ## Data checks
 
-Run bounded checks before processing a full dataset:
+After downloading and extracting the resources, run the release resource check
+from the repository root with the environment variables in the
+[training setup](usage.md#training):
 
 ```bash
-python scripts/data_checks/validate_labels_v5.py --help
-python scripts/data_checks/check_handcrop_consumer_contract.py --dataset dexycb
+python scripts/data_checks/check_training_resources.py \
+  --processed-root "$PROCESSED_ROOT" \
+  --resources-root "$TACTOHAND_TRAINING_RESOURCES"
 ```
 
-After crop changes, verify the actual consumer path: token/source mapping,
+The check verifies statistics/manifest bindings and physical-reference payloads.
+If you change crops, also verify the actual consumer path: token/source mapping,
 intrinsics, camera transforms and video frame selection. Producer self-consistency
 alone cannot detect shared indexing mistakes. Solver publication and stale-label
 rules are specified in the [label format](label_format.md).
+
+Training statistics and multi-body physical references are distributed under
+`training_resources/tactohand_v1` alongside `data/`; see the [training setup](usage.md#training).

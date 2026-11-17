@@ -10,6 +10,20 @@ from core.tactile_labels.schema import (
 )
 
 
+def timeline_revision(reader) -> str:
+    """Resolve the payload revision of a metadata-only upload publication."""
+    declared = reader.spec('tactile.timeline').get('source_revision')
+    if declared:
+        return str(declared)
+    profile = reader.manifest.get('upload_profile', {})
+    if profile.get('scope') == 'upload_only':
+        source = profile.get('source_revision')
+        if not isinstance(source, str) or not source:
+            raise ValueError('Upload-only publications must declare their payload source revision')
+        return source
+    return reader.revision
+
+
 def read_native_timeline(path: Path, labels: dict, revision: str) -> pa.Table:
     return validate_native_timeline(pq.read_table(path), labels, revision)
 

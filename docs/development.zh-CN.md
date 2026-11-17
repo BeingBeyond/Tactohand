@@ -35,14 +35,14 @@ checkpoint 键和已保存 Hydra target 的兼容性。
 长任务使用独立日志、增量输出和完成标记。
 
 ```bash
-tools/run_checks.sh --quick
+python tools/checks/check_resources.py
 python3 -S tools/checks/test_inference_dashboard.py
 python tools/checks/test_inference_visibility.py
 python tools/checks/test_inference_server.py
 ```
 
-`--quick` 检查 shell、跟踪文件卫生和依赖边界，`--full` 增加 launcher 契约和 pyright。
-预测、资源、rollout 检查单独运行，按改动选择相关项。
+资源检查覆盖随代码提供的协议及外部统计量的消费者。
+预测与 rollout 检查单独运行，按改动选择相关项。
 涉及数据时先用小子集验证；几何或裁剪改变后，检查实际消费者。
 
 ## 打包
@@ -72,3 +72,6 @@ PR 说明目的、受影响数据集和运行命令。Schema 或数据契约改�
 
 退役配方和调查记录保留在 Git 历史。当前操作写入[使用指南](usage.zh-CN.md)，
 读取约定写入[数据集](datasets.zh-CN.md)。
+
+训练协议与人工筛选规则放在 `core/resources/tactohand/`；生成的数值统计与物理参考
+归数据发布版本管理。生成和验证入口放在 `scripts/data_checks/`，并纳入源码包。

@@ -24,6 +24,10 @@ Episode 可跨文件和 row group，读取端须遵守行偏移、行数及各�
 紧凑 manifest 声明 `row_metadata: tactile.timeline`，reader 从 timeline 还原逻辑字段。
 三表按 episode、solver 行对齐；稀疏静帧可声明 `solver_index_column: source_position`。
 
+仅修改元数据的上传发布通过 `upload_profile.source_revision` 保留 timeline 的原始版本。
+重新生成的 timeline 在组件中声明自己的 `source_revision`。读取端按数值文件的版本
+验证时间轴；统计和物理参考仍绑定完整发布 manifest 的哈希。
+
 - `contact` 为 uint8，`signed_distance` 为 float16 米，截断至 ±0.25 m。
   每行先排列左手 778 顶点，再排列右手 778 顶点。
 - `tactile_flags` 的 bit 0/1 表示左右手 presence，bit 2/3 表示接触/距离有效性；

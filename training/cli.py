@@ -6,7 +6,7 @@ import sys
 
 def train_main() -> None:
     defaults = []
-    for group, option in (("experiment", "tactohand"), ("data", "tactohand")):
+    for group, option in (("experiment", "tactohand_256"), ("data", "tactohand")):
         if not any(arg.lstrip("+").startswith(group + "=") for arg in sys.argv[1:]):
             defaults.append(f"{group}={option}")
     sys.argv[1:1] = defaults

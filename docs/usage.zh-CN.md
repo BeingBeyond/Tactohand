@@ -110,17 +110,51 @@ checkpoint 和设备，再到 **New prediction** 区域上传视频。使用期�
 
 ## 训练
 
-准备[数据集](datasets.zh-CN.md)、骨干权重和 MANO，先查看组合配置再启动。
-本分支默认 `experiment=tactohand data=tactohand`，输入为 256px。
+准备[数据集](datasets.zh-CN.md)、骨干权重和 MANO。默认
+`experiment=tactohand_256 data=tactohand` 是正式的 256px、1,000 epoch 配置；
+`experiment=tactohand_256_fresh` 是 500 epoch 的从头训练配置。
+1,000 epoch 配置可通过 `RESUME_FROM` 指定仅加载模型权重的初始化。
+
+从同一数据发布版本下载 `training_resources/tactohand_v1.tar.gz`，按以下目录布局解压：
+
+```text
+<collection>/data/<dataset>_lerobot/
+<collection>/training_resources/tactohand_v1/
+  statistics/{scales.json,output_scales.json,contact.npz,force.npz}
+  rigid_references/<dataset>_lerobot/episode_*/{manifest.json,bodies.parquet}
+```
 
 ```bash
-export PROCESSED_ROOT=/path/to/prepared
+mkdir -p /path/to/collection/training_resources
+tar -xzf tactohand_v1.tar.gz -C /path/to/collection/training_resources
+export PROCESSED_ROOT=/path/to/collection/data
+export TACTOHAND_TRAINING_RESOURCES=/path/to/collection/training_resources/tactohand_v1
 export PRETRAINED_PATH=/path/to/backbone/model.safetensors
 export MANO_ASSETS_ROOT=/path/to/mano
+python scripts/data_checks/check_training_resources.py \
+  --processed-root "$PROCESSED_ROOT" --resources-root "$TACTOHAND_TRAINING_RESOURCES"
 tactohand-train --cfg job --resolve
 mkdir -p logs
-nohup tactohand-train > logs/train.log 2>&1 &
+nohup env GPUS=8 bash scripts/training/recipes/tactohand/train_256.sh \
+  > logs/train.log 2>&1 < /dev/null &
 ```
+
+仓库保存序列划分和物体筛选规则。数值统计与物理参考随数据版本分发，并绑定其
+manifest 哈希。`output_scales.json` 固定已训练模型的输出归一化，
+`scales.json` 保存从头训练使用的标签统计归一化。默认输入 256px、每卡 batch size 7。
+即使标签数值不变，换用另一次发布也要使用匹配的绑定信息。
+需要重建时，使用新的输出目录：
+
+```bash
+python scripts/data_checks/build_training_statistics.py \
+  --processed-root "$PROCESSED_ROOT" --output /path/to/new_resources/statistics
+python scripts/data_checks/prepare_rigid_references.py \
+  --processed-root "$PROCESSED_ROOT" --output-root /path/to/new_resources/rigid_references \
+  --log-root logs/rigid_references --workers 8
+```
+
+统计生成支持按 episode 续跑，物理参考生成会复用校验通过的 episode 产物，并单独
+保存日志。耗时较长的生成任务应使用 `nohup` 后台运行并重定向日志。
 
 在命令后追加 Hydra 参数可调整硬件、batch 或实验。从任务权重初始化并重置优化器、
 调度器和 epoch 时，传入 `resume_from=/path/to/model.ckpt resume_weights_only=true`。
