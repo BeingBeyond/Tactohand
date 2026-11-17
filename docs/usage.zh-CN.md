@@ -56,6 +56,9 @@ python -m pip install -e ./manotorch
 - [Hugging Face](https://huggingface.co/zhenqis123/TactoHand/tree/main)
 - [百度网盘](https://pan.baidu.com/s/1iG-hTmECh_FrkJKIgWdSiQ?pwd=898f)（提取码：`898f`，永久有效）
 
+当前公开权重为 epoch `235`（从 0 开始，即第 236 轮），global step `66080`，
+验证损失为 `0.12714`。两个下载源提供相同权重及可独立使用的推理配置。
+
 将两个文件放入 `checkpoints/` 目录，然后启动看板：
 
 ```bash

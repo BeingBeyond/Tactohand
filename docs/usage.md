@@ -62,6 +62,10 @@ Download `tactohand.ckpt` and its matching `tactohand.yaml` from either source:
 - [Hugging Face](https://huggingface.co/zhenqis123/TactoHand/tree/main)
 - [Baidu Netdisk](https://pan.baidu.com/s/1iG-hTmECh_FrkJKIgWdSiQ?pwd=898f) (access code: `898f`; no expiry)
 
+The published checkpoint is epoch `235` (zero-based; training epoch 236),
+global step `66080`, with validation loss `0.12714`. Both download sources
+provide the same weights and portable inference configuration.
+
 Place both files in `checkpoints/`, then start the viewer:
 
 ```bash
